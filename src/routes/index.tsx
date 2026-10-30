@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { GHOST_VOICES as VOICES } from "@/lib/ghost-voice-config";
+import { ESA_CONTEXT } from "@/data/esa-context";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
@@ -83,7 +84,7 @@ function Index() {
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
       </button>
 
-      <aside className="panel absolute bottom-5 left-5 z-10 w-72">
+      <aside className="panel absolute bottom-5 left-5 z-10 max-h-[calc(100vh-8rem)] w-72 overflow-y-auto">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>
@@ -227,6 +228,26 @@ function Index() {
                 <span>{(stats.bins.at(-1)?.start ?? 0) + 100} km</span>
               </div>
             </div>
+            <section className="mt-4 border-t border-border pt-3" aria-label="ESA global debris estimates">
+              <h3 className="font-pixel text-[9px] leading-relaxed text-spirit">The unseen graveyard</h3>
+              <dl className="mt-2 grid grid-cols-2 gap-3">
+                <div>
+                  <dd className="font-mono text-xl text-ghost">~{ESA_CONTEXT.large.count.toLocaleString("en-US")}</dd>
+                  <dt className="text-[11px] text-muted-foreground">debris objects {ESA_CONTEXT.large.size}</dt>
+                </div>
+                <div>
+                  <dd className="font-mono text-xl text-ghost">~{ESA_CONTEXT.small.count / 1000000} million</dd>
+                  <dt className="text-[11px] text-muted-foreground">objects {ESA_CONTEXT.small.size}</dt>
+                </div>
+              </dl>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                Historical global estimates, not this radar’s tracked count. Tiny debris is mostly too small to track individually.
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                ESA sources: <a className="text-spirit underline" href={ESA_CONTEXT.large.url} target="_blank" rel="noreferrer">{ESA_CONTEXT.large.year} large debris</a>
+                {" · "}<a className="text-spirit underline" href={ESA_CONTEXT.small.url} target="_blank" rel="noreferrer">{ESA_CONTEXT.small.year} model estimate</a>
+              </p>
+            </section>
           </>
         )}
       </aside>
