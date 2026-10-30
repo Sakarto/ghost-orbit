@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getDebris, ghostStory } from "@/lib/orbit.functions";
-import { buildGhosts, EVENTS, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
+import { buildGhosts, EVENT_META, EVENTS, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
 
@@ -54,7 +54,7 @@ function Index() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground">
       <Suspense fallback={null}>
-        <GhostGlobe ghosts={ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
+        <GhostGlobe ghosts={focus ? ghosts.filter((g) => g.source === focus) : ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
       </Suspense>
 
       <header className="pointer-events-none absolute left-6 top-5 z-10">
@@ -80,9 +80,24 @@ function Index() {
           <p className="mt-2 text-sm text-muted-foreground">Summoning the dead…</p>
         ) : (
           <>
-            <p className="mt-2 text-3xl font-bold text-ghost">{ghosts.length.toLocaleString()}</p>
+            <p className="mt-2 text-3xl font-bold text-ghost">
+              {(focus ? stats.by[focus] ?? 0 : ghosts.length).toLocaleString()}
+            </p>
             <p className="text-xs text-muted-foreground">
-              ghosts tracked · {live ? "live from CelesTrak" : "backup data"}
+              {focus ? `Showing ${EVENT_META[focus as keyof typeof EVENT_META].fragLabel}` : "ghosts tracked"} ·{" "}
+              {live ? "live from CelesTrak" : "backup data"}
+            </p>
+            {focus && (
+              <button
+                onClick={() => setFocus(null)}
+                className="mt-2 rounded border border-ghost/50 px-2 py-1 font-pixel text-[9px] uppercase text-ghost hover:bg-ghost/10"
+              >
+                Show all debris
+              </button>
+            )}
+            <h3 className="mt-4 font-pixel text-[9px] uppercase text-spirit">Debris Cloud Breakdown</h3>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              Each ghost is a piece of shrapnel from a major orbital catastrophe.
             </p>
             <ul className="mt-3 space-y-1 text-xs">
               {Object.entries(stats.by).map(([k, v]) => (
@@ -189,8 +204,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
           origin: ORIGINS[ghost.source],
           altitudeKm: ghost.alt,
           launchYear: ghost.launchYear,
-          mission: EVENTS[ghost.source]!.mission,
-          death: EVENTS[ghost.source]!.death,
+          source: ghost.source as keyof typeof EVENT_META,
         },
       });
       setStory(r.text);
@@ -209,8 +223,11 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">✕</button>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">NORAD ID</dt><dd className="font-mono">{ghost.id}</dd>
-        <dt className="text-muted-foreground">Origin</dt><dd>{ORIGINS[ghost.source]}</dd>
+        <dt className="text-muted-foreground">Country</dt>
+        <dd>{EVENT_META[ghost.source as keyof typeof EVENT_META]?.flag} {EVENT_META[ghost.source as keyof typeof EVENT_META]?.country}</dd>
+        <dt className="text-muted-foreground">Debris Event</dt>
+        <dd>{EVENT_META[ghost.source as keyof typeof EVENT_META]?.event}</dd>
+        <dt className="text-muted-foreground">Fragment</dt><dd className="font-mono">NORAD {ghost.id}</dd>
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>

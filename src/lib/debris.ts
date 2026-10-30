@@ -1,3 +1,4 @@
+export { EVENT_META } from "./events";
 import * as sat from "satellite.js";
 import type { RawTle } from "./orbit.functions";
 

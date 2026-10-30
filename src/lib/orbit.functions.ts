@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { EVENT_META, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
@@ -51,22 +52,24 @@ export const ghostStory = createServerFn({ method: "POST" })
         origin: z.string().max(100),
         altitudeKm: z.number(),
         launchYear: z.string().max(10),
-        mission: z.string().max(400),
-        death: z.string().max(400),
+        source: z.enum(["cosmos-2251-debris", "iridium-33-debris", "1999-025"]),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env['LOVABLE_API_KEY'];
     if (!key) throw new Error("AI is not configured");
-    const prompt = `You are the restless ghost of a piece of space debris, whispering to the living on Halloween night through dead radio static.
-Facts (use them accurately):
-- My name: ${data.name} (tracking number ${data.norad})
-- In life I was: ${data.mission}
-- How I died: ${data.death}
-- Today I scream around Earth at roughly 27,000 km/h (about Mach 22) — the speed my shattered body still carries — ${Math.round(data.altitudeKm)} km up, circling the planet every ~100 minutes, trapped in a cold cosmic purgatory with thousands of my fellow specters.
+    const ev = EVENT_META[data.source as EventKey];
+    const prompt = `You are the restless ghost of one fragment of space debris, speaking to the living on Halloween night.
 
-Write a 70-90 word first-person ghost story with heavy Halloween horror atmosphere: crackling static, cold, endless circling, an eternal haunt above Earth, a chilling warning to the living satellites that pass through my graveyard. Weave in the real history vividly (e.g. "the first satellite-on-satellite collision in human history", or "shattered by a kinetic anti-satellite missile into thousands of vengeful specters") — only the line that fits my true death. It must stay crystal clear: (1) how I lived, (2) exactly how I died, (3) how I haunt orbit today. Simple words, no acronyms. Plain text, no title.`;
+STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
+${ev.facts}
+${ev.forbid}
+I am fragment number ${data.norad} of that wreck. Today I race around Earth at about 27,000 km/h, ${Math.round(data.altitudeKm)} km up, circling every ~100 minutes, trapped in a cold cosmic purgatory with thousands of other fragments, a threat to every living satellite that passes.
+
+Write a 70-90 word first-person ghost story. Heavy Halloween horror mood: cold, endless circling, an eternal haunt above Earth, a chilling warning to the living. Make it crystal clear (1) who I was in life, (2) exactly how I died, per the facts above, (3) how I haunt orbit today.
+
+This text is read aloud by a voice engine, so write ONLY natural spoken English sentences. Absolutely no sound effects or onomatopoeia (no "shhh", "ssshhk", "bzzt", "crackle", "hiss"), no asterisks or stage directions, no stretched letters, no ellipses chains, no emojis, no acronyms. Plain text, no title.`;
     const res = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
       method: "POST",
       headers: {
@@ -111,5 +114,11 @@ Write a 70-90 word first-person ghost story with heavy Halloween horror atmosphe
       }
     }
     if (refused) throw new Error("This ghost refuses to speak.");
-    return { text: text.trim() };
+    const clean = text
+      .replace(/\*[^*]*\*/g, "")
+      .replace(/\b(s+h+k*|sh{2,}|bz+t|hi+ss+|crackle|kzzt)\b[.!,]*/gi, "")
+      .replace(/(\w)\1{3,}/g, "$1")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return { text: clean };
   });
