@@ -26,7 +26,6 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [ghosts, setGhosts] = useState<Ghost[]>([]);
   const all = useRef<Ghost[]>([]);
-  const [live, setLive] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<Ghost | null>(null);
   const [rotate, setRotate] = useState(true);
@@ -43,7 +42,6 @@ function Index() {
       .then((r) => {
         all.current = buildGhosts(r.objects);
         setGhosts([...all.current]);
-        setLive(r.live);
       })
       .catch((e) => setError(String(e?.message ?? e)));
     const t = setInterval(() => {
@@ -101,9 +99,7 @@ function Index() {
                   ? "intact zombie satellites"
                   : cat === "debris"
                     ? "explosion & collision fragments"
-                    : "orbital ghosts tracked"}{" "}
-              ·{" "}
-              {live ? "live from CelesTrak" : "backup data"}
+                    : "orbital ghosts tracked"}
             </p>
             <div className="mt-3 grid grid-cols-3 gap-1 rounded-md border border-border p-0.5 text-[10px]">
               {([
