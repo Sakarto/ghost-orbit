@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
+import { ZOMBIES } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 import { GHOST_VOICE_SETTINGS, VOICE_IDS } from "@/lib/ghost-voice-config";
 import { readGhostAudio } from "@/lib/ghost-response";
