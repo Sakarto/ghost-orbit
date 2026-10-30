@@ -27,6 +27,8 @@ describe("haunted radio processing", () => {
     vi.stubGlobal("AudioContext", FakeContext);
     const audio = { pause: vi.fn() } as unknown as HTMLAudioElement;
     const stop = createGhostTransmission(audio);
+    expect(audio.playbackRate).toBe(0.86);
+    expect(audio.preservesPitch).toBe(false);
     expect(nodes.find((n) => n.type === "highpass")?.frequency.value).toBe(350);
     expect(nodes.filter((n) => n.type === "lowpass").map((n) => n.frequency.value)).toEqual([3200, 1800]);
     expect(nodes.find((n) => n.delayTime.value > 0)?.delayTime.value).toBe(0.18);

@@ -2,8 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
-
-export const VOICE_IDS = ["SAz9YHcvj6GT2YYXdXww", "CwhRBWXzGAHq8TQ4Fs17", "kPtEHAvRnjUJFv7SK9WI"] as const;
+import { GHOST_VOICE_SETTINGS, VOICE_IDS } from "@/lib/ghost-voice-config";
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
 
@@ -74,7 +73,7 @@ export const ghostStory = createServerFn({ method: "POST" })
     const z0 = data.source === "derelict" ? ZOMBIES[String(Number(data.norad))] : undefined;
     const ev = z0 ?? EVENT_META[data.source as EventKey];
     if (!ev.facts) throw new Error("This ghost's history is unknown.");
-    const prompt = `You are a restless radio ghost, trapped between worlds in the cold void above Earth, speaking to the living on Halloween night.
+    const prompt = `You are a terrifying, exhausted satellite spirit speaking through a haunted radio transmission on Halloween night, not a polished documentary narrator. Your voice is intimate, broken, pleading, then quietly threatening: short breathless sentences, unsettling silences, and dread rather than theatrical exposition.
 
 STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
 ${ev.facts}
@@ -82,6 +81,8 @@ ${ev.forbid}
 ${z0 ? "I am still in one piece, a whole dead spacecraft." : `I am fragment number ${data.norad} of that wreck.`} Today I race around Earth at about 27,000 km/h, ${Math.round(data.altitudeKm)} km up, circling every ~100 minutes, trapped in a cold cosmic purgatory among thousands of dead things, a threat to every living satellite that passes.
 
 Write a 70-90 word first-person ghost story. Begin with an eerie spoken transmission preamble, such as "Can anyone hear me down there? It is so cold... drifting through the dark." Use suspenseful punctuation and occasional single ellipses for natural pauses. Heavy, spine-chilling Halloween horror: the freezing void, an eternity drifting alone in the dark above Earth, a voice trapped between worlds, a growing graveyard of the dead. End with a chilling warning to the living about the chain reaction scientists fear, where each crash makes more ghosts until the sky is a minefield (you may name it Kessler syndrome). Make it crystal clear (1) who I was in life, (2) exactly how I died, per the facts above, (3) how I haunt orbit today.
+
+Weave in two or three vivid cosmic-horror or paranormal electronic-voice metaphors: a freezing thermosphere tomb, phantom telemetry, severed copper nerves, drifting through black nothingness, or wailing solar winds. These are haunted subjective imagery, NOT scientific claims: space carries no audible wind, the thermosphere is not literally freezing, and intact spacecraft must not acquire invented severed wires, explosions, or collision damage. Match any damage imagery to the documented demise. Make the satellite's actual mission and death unmistakable beneath the horror. Never write the acronym EVP or read performance instructions aloud.
 
 This text is read aloud by a voice engine, so write ONLY natural spoken English sentences. Absolutely no sound effects or onomatopoeia (no "shhh", "ssshhk", "bzzt", "crackle", "hiss"), no asterisks or stage directions, no stretched letters, no ellipses chains, no emojis, no acronyms. Plain text, no title.`;
     const body = JSON.stringify({
@@ -144,7 +145,7 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
 /** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
 export const ghostVoice = createServerFn({ method: "POST" })
   .inputValidator((d) =>
-    z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default("SAz9YHcvj6GT2YYXdXww") }).parse(d),
+    z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default(VOICE_IDS[0]) }).parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env["ELEVENLABS_API_KEY"];
@@ -157,7 +158,7 @@ export const ghostVoice = createServerFn({ method: "POST" })
         body: JSON.stringify({
           text: data.text,
           model_id: "eleven_multilingual_v2",
-          voice_settings: { stability: 0.28, similarity_boost: 0.75, style: 0.8, use_speaker_boost: true, speed: 0.85 },
+          voice_settings: GHOST_VOICE_SETTINGS,
         }),
       },
     );

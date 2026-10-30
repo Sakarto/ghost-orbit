@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
+import { GHOST_VOICES as VOICES } from "@/lib/ghost-voice-config";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
@@ -234,12 +235,6 @@ function Index() {
     </main>
   );
 }
-
-const VOICES = [
-  { id: "SAz9YHcvj6GT2YYXdXww", label: "Eerie Void Whisper" },
-  { id: "CwhRBWXzGAHq8TQ4Fs17", label: "Ominous Phantom" },
-  { id: "kPtEHAvRnjUJFv7SK9WI", label: "Glitch / Poltergeist (paid ElevenLabs plan)" },
-] as const;
 
 function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [story, setStory] = useState("");
