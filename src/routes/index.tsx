@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { playStaticBurst, startDrone } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
@@ -69,7 +70,18 @@ function Index() {
           Earth's orbit is haunted — and we're running out of{" "}
           <em className="text-ghost drop-shadow-[0_0_8px_var(--ghost)]">space</em>.
         </p>
+        <div className="mt-3 max-w-xl rounded-md border border-spirit/40 bg-card/70 px-3 py-2 backdrop-blur">
+          <p className="font-pixel text-[9px] uppercase tracking-wide text-spirit">☠ The Global Orbital Graveyard</p>
+          <p className="mt-1 text-xs leading-snug text-foreground/90">
+            <span className="font-bold text-ghost">~36,500+</span> tracked lethal fragments &{" "}
+            <span className="font-bold text-[color:var(--zombie)]">~3,000+</span> silent dead spacecraft haunt Earth's orbit.
+            Showing <span className="font-mono text-ghost">{visible.length.toLocaleString()}</span> actively tracked radar targets in this sector.
+          </p>
+        </div>
       </header>
+      <p className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 text-[10px] text-muted-foreground">
+        Stories by Claude (Anthropic) · Voices by ElevenLabs · Orbits from CelesTrak
+      </p>
 
       <button
         onClick={() => setRotate((r) => !r)}
@@ -231,6 +243,12 @@ function Index() {
   );
 }
 
+const VOICES = [
+  { id: "kPtEHAvRnjUJFv7SK9WI", label: "Glitch / Poltergeist" },
+  { id: "SAz9YHcvj6GT2YYXdXww", label: "Eerie Void Whisper" },
+  { id: "CwhRBWXzGAHq8TQ4Fs17", label: "Ominous Phantom" },
+] as const;
+
 function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [story, setStory] = useState("");
   const [shown, setShown] = useState("");
@@ -238,11 +256,20 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [err, setErr] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const voiceRef = useRef<string | null>(null);
+  const voiceCache = useRef<Record<string, string>>({});
+  const [voice, setVoice] = useState<(typeof VOICES)[number]["id"]>(VOICES[0].id);
+  const [speaking, setSpeaking] = useState(false);
+  const stopDrone = useRef<(() => void) | null>(null);
+  const endSpeech = () => {
+    setSpeaking(false);
+    stopDrone.current?.();
+    stopDrone.current = null;
+  };
   useEffect(
     () => () => {
       window.speechSynthesis?.cancel();
       audioRef.current?.pause();
+      stopDrone.current?.();
     },
     [],
   );
@@ -260,17 +287,23 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const speak = async (text: string) => {
     audioRef.current?.pause();
     window.speechSynthesis?.cancel();
-    if (voiceRef.current === null) {
+    endSpeech();
+    setSpeaking(true);
+    playStaticBurst();
+    stopDrone.current = startDrone();
+    if (voiceCache.current[voice] === undefined) {
       try {
-        const v = await ghostVoice({ data: { text } });
-        voiceRef.current = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
+        const v = await ghostVoice({ data: { text, voice } });
+        voiceCache.current[voice] = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
       } catch {
-        voiceRef.current = "";
+        voiceCache.current[voice] = "";
       }
     }
-    if (voiceRef.current) {
-      const a = new Audio(voiceRef.current);
+    const src = voiceCache.current[voice];
+    if (src) {
+      const a = new Audio(src);
       audioRef.current = a;
+      a.onended = endSpeech;
       try {
         await a.play();
         return;
@@ -279,11 +312,11 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       }
     }
     const s = window.speechSynthesis;
-    if (!s) return;
-    s.cancel();
+    if (!s) return endSpeech();
     const u = new SpeechSynthesisUtterance(text);
-    u.pitch = 0.4;
-    u.rate = 0.85;
+    u.pitch = 0.3;
+    u.rate = 0.8;
+    u.onend = endSpeech;
     s.speak(u);
   };
 
@@ -312,7 +345,9 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   };
 
   return (
-    <aside className="panel absolute right-5 top-5 z-10 w-80 max-w-[calc(100vw-2.5rem)]">
+    <aside
+      className={`panel absolute right-5 top-5 z-10 w-80 max-w-[calc(100vw-2.5rem)] ${loading || speaking ? "seance-active" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-display text-2xl text-ghost">👻 {ghost.name}</h2>
         <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">✕</button>
@@ -340,15 +375,32 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
+      <label className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        Ghost voice
+        <select
+          value={voice}
+          onChange={(e) => setVoice(e.target.value as typeof voice)}
+          className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+        >
+          {VOICES.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <button
         onClick={hear}
         disabled={loading}
-        className="mt-4 w-full rounded-md bg-spirit px-4 py-2 font-pixel text-[10px] uppercase text-primary-foreground shadow-[0_0_16px_var(--spirit)] transition hover:brightness-110 disabled:opacity-60"
+        className="mt-2 w-full rounded-md bg-spirit px-4 py-2 font-pixel text-[10px] uppercase text-primary-foreground shadow-[0_0_16px_var(--spirit)] transition hover:brightness-110 disabled:opacity-60"
       >
-        {loading ? "Summoning…" : story ? "Hear it again" : "Hear its story"}
+        {loading ? "Contacting the dead…" : speaking ? "The ghost speaks…" : story ? "Hear it again" : "Hear its story"}
       </button>
       {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
       {shown && <p className="mt-4 text-sm italic leading-relaxed text-ghost/90">{shown}</p>}
+      <p className="mt-4 border-t border-border pt-2 text-center text-[10px] text-muted-foreground">
+        Powered by <span className="text-spirit">Claude (Anthropic)</span> & <span className="text-ghost">ElevenLabs</span>
+      </p>
     </aside>
   );
 }

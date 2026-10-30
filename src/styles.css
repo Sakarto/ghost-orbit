@@ -160,3 +160,35 @@
     box-shadow: 0 0 30px -10px var(--spirit);
   }
 }
+
+@layer components {
+  .seance-active {
+    position: absolute;
+    overflow: hidden;
+    animation: seance-flicker 2.4s infinite steps(1);
+  }
+  .seance-active::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--ghost) 10%, transparent) 0 1px,
+      transparent 1px 3px
+    );
+    animation: scan-roll 6s linear infinite;
+    mix-blend-mode: screen;
+  }
+}
+@keyframes scan-roll {
+  from { background-position: 0 0; }
+  to { background-position: 0 120px; }
+}
+@keyframes seance-flicker {
+  0%, 100% { opacity: 1; }
+  41% { opacity: 0.86; }
+  42% { opacity: 1; }
+  77% { opacity: 0.92; }
+  78% { opacity: 1; }
+}
