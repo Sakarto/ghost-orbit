@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Deep George/Roger voices, lower stability, pitched-down playback, and cosmic-horror storytelling verified
+- [x] Deep George/Roger voices, lower stability, pitched-down playback, and cosmic-horror storytelling verified
 - [x] Process ghost voices as haunted radio transmissions and verify playback
 - [x] Remove Global Orbital Graveyard header overlay
 - [x] Remove redundant category row for intact spacecraft
