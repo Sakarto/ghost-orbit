@@ -106,7 +106,7 @@ export default function GhostGlobe({
       g.pointOfView({ altitude: 2.6 });
       globe.current = g;
       g.objectsData(ghosts);
-      const resize = () => g.width(window.innerWidth).height(window.innerHeight);
+      const resize = () => g.width(el.current?.clientWidth ?? 0).height(el.current?.clientHeight ?? 0);
       resize();
       window.addEventListener("resize", resize);
       el.current.setAttribute("data-scene-ready", "true");
@@ -122,5 +122,5 @@ export default function GhostGlobe({
     globe.current?.objectsData([...ghosts]);
   }, [ghosts, selectedId, focusSource]);
 
-  return <div ref={el} className="absolute inset-0" />;
+  return <div ref={el} className="absolute inset-y-0 right-0 left-0 md:left-[19.25rem]" />;
 }
