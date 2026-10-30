@@ -9,6 +9,68 @@ function ac() {
   return ctx;
 }
 
+/** Unlock on the button gesture, before waiting for story/voice requests. */
+export function unlockSpookyAudio() {
+  const c = ac();
+  if (c) void c.resume().catch(() => {});
+}
+
+/** No clean audio bypass: every voice passes through the haunted radio graph. */
+export function createGhostTransmission(audio: HTMLAudioElement): () => void {
+  const c = ac();
+  if (!c) throw new Error("Audio processing is unavailable");
+  const source = c.createMediaElementSource(audio);
+  const highpass = c.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 350;
+  const lowpass = c.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 3200;
+  const tremolo = c.createGain();
+  tremolo.gain.value = 0.85;
+  const lfo = c.createOscillator();
+  lfo.frequency.value = 4.3;
+  const depth = c.createGain();
+  depth.gain.value = 0.1;
+  lfo.connect(depth).connect(tremolo.gain);
+
+  const delay = c.createDelay(1);
+  delay.delayTime.value = 0.18;
+  const dampening = c.createBiquadFilter();
+  dampening.type = "lowpass";
+  dampening.frequency.value = 1800;
+  const feedback = c.createGain();
+  feedback.gain.value = 0.32;
+  const echoMix = c.createGain();
+  echoMix.gain.value = 0.28;
+  const reverb = c.createConvolver();
+  const impulse = noiseBuffer(c, 1.8);
+  const samples = impulse.getChannelData(0);
+  for (let i = 0; i < samples.length; i++) samples[i] = (samples[i] ?? 0) * (1 - i / samples.length) ** 3;
+  reverb.buffer = impulse;
+  const reverbMix = c.createGain();
+  reverbMix.gain.value = 0.13;
+  const output = c.createGain();
+  output.gain.value = 0.8;
+
+  source.connect(highpass).connect(lowpass).connect(tremolo);
+  tremolo.connect(output);
+  tremolo.connect(delay).connect(dampening).connect(feedback).connect(delay);
+  delay.connect(echoMix).connect(output);
+  tremolo.connect(reverb).connect(reverbMix).connect(output);
+  output.connect(c.destination);
+  lfo.start();
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    audio.pause();
+    lfo.stop();
+    [source, highpass, lowpass, tremolo, lfo, depth, delay, dampening, feedback, echoMix, reverb, reverbMix, output]
+      .forEach((node) => node.disconnect());
+  };
+}
+
 function noiseBuffer(c: AudioContext, seconds: number) {
   const buf = c.createBuffer(1, c.sampleRate * seconds, c.sampleRate);
   const d = buf.getChannelData(0);
