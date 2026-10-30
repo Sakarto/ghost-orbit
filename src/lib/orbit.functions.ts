@@ -11,7 +11,11 @@ const GROUPS = [
 ];
 const MAX_PER_GROUP = 600;
 
+// CelesTrak rate-limits repeat downloads, so keep each live copy for 2 hours.
+let cache: { at: number; data: { objects: RawTle[]; live: boolean } } | null = null;
+
 export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
+  if (cache && Date.now() - cache.at < 2 * 3600_000) return cache.data;
   const all: RawTle[] = [];
   let live = 0;
   for (const g of GROUPS) {
@@ -24,7 +28,7 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
       const items: RawTle[] = [];
       for (let i = 0; i + 2 < lines.length + 1 && items.length < MAX_PER_GROUP; i += 3) {
         if (!lines[i + 1]?.startsWith("1 ") || !lines[i + 2]?.startsWith("2 ")) continue;
-        items.push({ name: lines[i].trim(), l1: lines[i + 1], l2: lines[i + 2], source: g.key });
+        items.push({ name: (lines[i] ?? "").trim(), l1: lines[i + 1]!, l2: lines[i + 2]!, source: g.key });
       }
       if (!items.length) throw new Error("empty");
       all.push(...items);
@@ -33,7 +37,9 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
       all.push(...(fallback as RawTle[]).filter((f) => f.source === g.key));
     }
   }
-  return { objects: all, live: live === GROUPS.length };
+  const data = { objects: all, live: live === GROUPS.length };
+  if (data.live) cache = { at: Date.now(), data };
+  return data;
 });
 
 export const ghostStory = createServerFn({ method: "POST" })
@@ -45,13 +51,22 @@ export const ghostStory = createServerFn({ method: "POST" })
         origin: z.string().max(100),
         altitudeKm: z.number(),
         launchYear: z.string().max(10),
+        mission: z.string().max(400),
+        death: z.string().max(400),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env['LOVABLE_API_KEY'];
     if (!key) throw new Error("AI is not configured");
-    const prompt = `You are the ghost of a piece of space debris. Facts: name "${data.name}", NORAD ID ${data.norad}, born from: ${data.origin}, original launch year ${data.launchYear}, currently haunting an orbit ${Math.round(data.altitudeKm)} km above Earth. Write a 60-80 word first-person spooky ghost story using these real facts. Eerie, poetic, a little sad, with a subtle warning about orbital crowding. Plain text only, no title.`;
+    const prompt = `You are the ghost of a piece of space junk, telling your story on Halloween night.
+Facts:
+- My name: ${data.name} (tracking number ${data.norad})
+- In life I was: ${data.mission}
+- How I died: ${data.death}
+- Today I drift ${Math.round(data.altitudeKm)} km above Earth, circling the planet about every 100 minutes.
+
+Write a 60-80 word first-person ghost story in three clear beats: (1) what I was sent up to do, (2) exactly how I died, (3) how I haunt Earth's orbit now and threaten living satellites. Spooky, punchy, simple words anyone understands. No acronyms or technical jargon. Plain text, no title.`;
     const res = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
       method: "POST",
       headers: {

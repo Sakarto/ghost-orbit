@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getDebris, ghostStory } from "@/lib/orbit.functions";
-import { buildGhosts, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
+import { buildGhosts, EVENTS, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
 
@@ -26,6 +26,7 @@ function Index() {
   const [live, setLive] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<Ghost | null>(null);
+  const [rotate, setRotate] = useState(true);
 
   useEffect(() => {
     getDebris()
@@ -51,15 +52,23 @@ function Index() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground">
       <Suspense fallback={null}>
-        <GhostGlobe ghosts={ghosts} selectedId={sel?.id ?? null} onSelect={setSel} />
+        <GhostGlobe ghosts={ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} />
       </Suspense>
 
       <header className="pointer-events-none absolute left-6 top-5 z-10">
         <h1 className="font-display text-4xl text-ghost drop-shadow-[0_0_12px_var(--ghost)] sm:text-5xl">Ghost Orbit</h1>
         <p className="mt-2 font-pixel text-[10px] leading-relaxed text-spirit sm:text-xs">
-          Earth's orbit is haunted — and we're running out of space.
+          Earth's orbit is haunted — and we're running out of{" "}
+          <em className="text-ghost drop-shadow-[0_0_8px_var(--ghost)]">space</em>.
         </p>
       </header>
+
+      <button
+        onClick={() => setRotate((r) => !r)}
+        className="panel absolute bottom-5 right-5 z-10 !px-3 !py-2 font-pixel text-[9px] uppercase text-ghost hover:text-spirit"
+      >
+        {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
+      </button>
 
       <aside className="panel absolute bottom-5 left-5 z-10 w-72">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Séance report</h2>
@@ -75,8 +84,8 @@ function Index() {
             </p>
             <ul className="mt-3 space-y-1 text-xs">
               {Object.entries(stats.by).map(([k, v]) => (
-                <li key={k} className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{ORIGINS[k]}</span>
+                <li key={k} className="flex justify-between gap-2" title={EVENTS[k]?.short}>
+                  <span className="cursor-help text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
                   <span className="font-mono text-ghost">{v}</span>
                 </li>
               ))}
@@ -85,6 +94,10 @@ function Index() {
               <p className="text-xs">
                 <span className="font-pixel text-[9px] text-spirit">The Haunted Zone:</span>{" "}
                 {stats.haunted.start}–{stats.haunted.start + 100} km ({stats.haunted.count})
+              </p>
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                The most crowded, dangerous altitude band —{" "}
+                {Math.round((stats.haunted.count / ghosts.length) * 100)}% of these ghosts are trapped here, where working satellites also fly.
               </p>
               <div className="mt-2 flex h-20 items-end gap-px">
                 {stats.bins.map((b) => (
@@ -150,6 +163,8 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
           origin: ORIGINS[ghost.source],
           altitudeKm: ghost.alt,
           launchYear: ghost.launchYear,
+          mission: EVENTS[ghost.source]!.mission,
+          death: EVENTS[ghost.source]!.death,
         },
       });
       setStory(r.text);
@@ -173,6 +188,9 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
+      <p className="mt-3 rounded-md border border-border bg-muted/40 p-2 text-xs leading-snug text-muted-foreground">
+        {EVENTS[ghost.source]?.short}
+      </p>
       <button
         onClick={hear}
         disabled={loading}
