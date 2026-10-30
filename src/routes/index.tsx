@@ -244,9 +244,9 @@ function Index() {
 }
 
 const VOICES = [
-  { id: "kPtEHAvRnjUJFv7SK9WI", label: "Glitch / Poltergeist" },
   { id: "SAz9YHcvj6GT2YYXdXww", label: "Eerie Void Whisper" },
   { id: "CwhRBWXzGAHq8TQ4Fs17", label: "Ominous Phantom" },
+  { id: "kPtEHAvRnjUJFv7SK9WI", label: "Glitch / Poltergeist (paid ElevenLabs plan)" },
 ] as const;
 
 function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
@@ -259,6 +259,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const voiceCache = useRef<Record<string, string>>({});
   const [voice, setVoice] = useState<(typeof VOICES)[number]["id"]>(VOICES[0].id);
   const [speaking, setSpeaking] = useState(false);
+  const [model, setModel] = useState("Claude");
   const stopDrone = useRef<(() => void) | null>(null);
   const endSpeech = () => {
     setSpeaking(false);
@@ -336,6 +337,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         },
       });
       setStory(r.text);
+      setModel(r.model);
       void speak(r.text);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "The ghost went silent.");
@@ -399,7 +401,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
       {shown && <p className="mt-4 text-sm italic leading-relaxed text-ghost/90">{shown}</p>}
       <p className="mt-4 border-t border-border pt-2 text-center text-[10px] text-muted-foreground">
-        Powered by <span className="text-spirit">Claude (Anthropic)</span> & <span className="text-ghost">ElevenLabs</span>
+        Powered by <span className="text-spirit">{model} (Anthropic)</span> & <span className="text-ghost">ElevenLabs</span>
       </p>
     </aside>
   );

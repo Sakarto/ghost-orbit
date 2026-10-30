@@ -3,7 +3,7 @@ import { z } from "zod";
 import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 
-export const VOICE_IDS = ["kPtEHAvRnjUJFv7SK9WI", "SAz9YHcvj6GT2YYXdXww", "CwhRBWXzGAHq8TQ4Fs17"] as const;
+export const VOICE_IDS = ["SAz9YHcvj6GT2YYXdXww", "CwhRBWXzGAHq8TQ4Fs17", "kPtEHAvRnjUJFv7SK9WI"] as const;
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
 
@@ -85,7 +85,8 @@ Write a 70-90 word first-person ghost story. Heavy, spine-chilling Halloween hor
 
 This text is read aloud by a voice engine, so write ONLY natural spoken English sentences. Absolutely no sound effects or onomatopoeia (no "shhh", "ssshhk", "bzzt", "crackle", "hiss"), no asterisks or stage directions, no stretched letters, no ellipses chains, no emojis, no acronyms. Plain text, no title.`;
     const body = JSON.stringify({
-      model: anthropicKey ? "claude-sonnet-4-20250514" : "anthropic/claude-sonnet-5",
+      // claude-3-opus-20240229 has been retired by Anthropic, so use the current Opus alias.
+      model: anthropicKey ? "claude-opus-4-1" : "anthropic/claude-sonnet-5",
       max_tokens: 1024,
       stream: true,
       messages: [{ role: "user", content: prompt }],
@@ -137,13 +138,13 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
       .replace(/(\w)\1{3,}/g, "$1")
       .replace(/\s{2,}/g, " ")
       .trim();
-    return { text: clean };
+    return { text: clean, model: anthropicKey ? "Claude Opus" : "Claude Sonnet" };
   });
 
 /** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
 export const ghostVoice = createServerFn({ method: "POST" })
   .inputValidator((d) =>
-    z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default("kPtEHAvRnjUJFv7SK9WI") }).parse(d),
+    z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default("SAz9YHcvj6GT2YYXdXww") }).parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env["ELEVENLABS_API_KEY"];
