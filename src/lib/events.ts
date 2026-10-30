@@ -1,4 +1,4 @@
-export type EventKey = "cosmos-2251-debris" | "iridium-33-debris" | "1999-025";
+export type EventKey = "cosmos-2251-debris" | "iridium-33-debris" | "1999-025" | "derelict";
 
 export const EVENT_META: Record<
   EventKey,
@@ -31,5 +31,49 @@ export const EVENT_META: Record<
       "I was Fengyun-1C, a Chinese weather satellite launched in 1999 that watched clouds and storms from space. On January 11, 2007 China deliberately destroyed me with a ground-launched missile that smashed into me in an intentional anti-satellite weapons test, about 865 km up — creating the largest debris cloud in human history, thousands of pieces.",
     forbid:
       "NEVER describe my death as a collision with another satellite, a crash with a satellite, or an accident. It was a deliberate missile strike launched from the ground. Never mention Cosmos or Iridium.",
+  },
+  derelict: {
+    country: "Various",
+    flag: "🧟",
+    event: "Derelict Spacecraft",
+    fragLabel: "intact zombie satellites",
+    facts: "",
+    forbid: "",
+  },
+};
+
+export type Zombie = { country: string; flag: string; event: string; status: string; facts: string; forbid: string; short: string };
+
+/** Intact dead spacecraft, keyed by NORAD ID. */
+export const ZOMBIES: Record<string, Zombie> = {
+  "5": {
+    country: "United States",
+    flag: "🇺🇸",
+    event: "Derelict Spacecraft — died whole",
+    status: "Silent since 1964",
+    short: "Vanguard 1 (USA, 1958): the oldest human-made object still orbiting Earth. Its radio went silent in 1964.",
+    facts:
+      "I am Vanguard 1, a small American satellite about the size of a grapefruit, launched on March 17, 1958 — the first satellite to run on solar power. My radio fell silent in 1964, but I never fell. I am the oldest artificial object still orbiting Earth, and I may keep circling for hundreds of years.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision. I died whole when my radio went silent.",
+  },
+  "27386": {
+    country: "Europe (ESA)",
+    flag: "🇪🇺",
+    event: "Derelict Spacecraft — died whole",
+    status: "Silent since 2012",
+    short: "Envisat (Europe, 2002): an 8-ton Earth-watching giant the size of a double-decker bus that suddenly went silent in 2012.",
+    facts:
+      "I am Envisat, a European Space Agency satellite launched in 2002 to watch Earth's oceans, ice and air. I weigh about 8 tons, as big as a double-decker bus. On April 8, 2012 I suddenly went silent and nobody could wake me. Now I drift whole and uncontrolled, one of the biggest collision threats in orbit, and I will haunt it for about 150 years.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision. I died whole when contact was suddenly lost.",
+  },
+  "116": {
+    country: "United States",
+    flag: "🇺🇸",
+    event: "Derelict Spacecraft — died whole",
+    status: "Long dead, nuclear-powered",
+    short: "Transit 4A (USA, 1961): a navigation satellite that carried the first nuclear power source into space. Now a silent radioactive ghost.",
+    facts:
+      "I am Transit 4A, an American navy navigation satellite launched on June 29, 1961. I carried the first nuclear power source ever sent into space, a small plutonium battery. My signals died long ago, but I still circle Earth whole — a silent, radioactive ghost.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision. Never say I exploded.",
   },
 };
