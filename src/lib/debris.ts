@@ -74,7 +74,7 @@ export function propagateAll(ghosts: Ghost[], date: Date): Ghost[] {
     const p = pv?.position;
     if (!p || typeof p === "boolean") continue;
     const gd = sat.eciToGeodetic(p, gmst);
-    if (!isFinite(gd.height) || gd.height < 100 || gd.height > 3000) continue;
+    if (!isFinite(gd.height) || gd.height < 100 || gd.height > 5000) continue;
     g.lat = sat.degreesLat(gd.latitude);
     g.lng = sat.degreesLong(gd.longitude);
     g.alt = gd.height;

@@ -40,7 +40,7 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
     } catch {
       all.push(
         ...(fallback as RawTle[]).filter(
-          (f) => f.source === g.key && (g.key !== "derelict" || f.l1.slice(2, 7).trim() === g.q.split("=")[1]),
+          (f) => f.source === g.key && (g.key !== "derelict" || Number(f.l1.slice(2, 7)) === Number(g.q.split("=")[1])),
         ),
       );
     }
