@@ -60,17 +60,18 @@ export default function GhostGlobe({
       };
       const mat = new THREE.SpriteMaterial({ map: makeTex("#7dffb0"), transparent: true, depthWrite: false });
       const dimMat = new THREE.SpriteMaterial({ map: makeTex("#7dffb0"), transparent: true, opacity: 0.12, depthWrite: false });
+      const zMat = new THREE.SpriteMaterial({ map: makeTex("#ffb35c"), transparent: true, depthWrite: false });
       const selMat = new THREE.SpriteMaterial({ map: makeTex("#c79bff"), transparent: true, depthWrite: false });
       // Large invisible hitbox so tiny ghosts are easy to click
       const hitGeo = new THREE.SphereGeometry(2.4, 6, 6);
       const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
       if (cancelled || !el.current) return;
       const g = new (Globe as any)(el.current)
-        .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
+        .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-night.jpg")
         .bumpImageUrl("https://unpkg.com/three-globe/example/img/earth-topology.png")
         .backgroundImageUrl("https://unpkg.com/three-globe/example/img/night-sky.png")
-        .atmosphereColor("#9b6cff")
-        .atmosphereAltitude(0.18)
+        .atmosphereColor("#5dffa8")
+        .atmosphereAltitude(0.22)
         .objectLat("lat")
         .objectLng("lng")
         .objectAltitude((d: Ghost) => d.alt / EARTH_R)
@@ -80,8 +81,9 @@ export default function GhostGlobe({
           const f = focusRef.current;
           const dim = !!f && d.source !== f && !sel;
           const hot = !!f && d.source === f;
-          const sp = new THREE.Sprite(sel ? selMat : dim ? dimMat : mat);
-          sp.scale.setScalar(sel ? 7 : hot ? 5 : 4);
+          const z = d.source === "derelict";
+          const sp = new THREE.Sprite(sel ? selMat : dim ? dimMat : z ? zMat : mat);
+          sp.scale.setScalar(sel ? 7 : z ? 8 : hot ? 5 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
@@ -95,9 +97,9 @@ export default function GhostGlobe({
           if (el.current) el.current.style.cursor = d ? "pointer" : "grab";
         });
       const gm = g.globeMaterial();
-      gm.color = new THREE.Color("#6b7fa3");
-      gm.emissive = new THREE.Color("#0c1630");
-      gm.emissiveIntensity = 0.4;
+      gm.color = new THREE.Color("#4a4f78");
+      gm.emissive = new THREE.Color("#1a0d33");
+      gm.emissiveIntensity = 0.35;
       g.controls().autoRotate = true;
       g.controls().autoRotateSpeed = 0.25;
       g.pointOfView({ altitude: 2.6 });

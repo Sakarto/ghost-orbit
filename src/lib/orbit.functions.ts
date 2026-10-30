@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { EVENT_META, type EventKey } from "@/lib/events";
+import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
@@ -9,6 +9,9 @@ const GROUPS = [
   { key: "cosmos-2251-debris", q: "GROUP=cosmos-2251-debris" },
   { key: "iridium-33-debris", q: "GROUP=iridium-33-debris" },
   { key: "1999-025", q: "INTDES=1999-025" },
+  { key: "derelict", q: "CATNR=5" },
+  { key: "derelict", q: "CATNR=27386" },
+  { key: "derelict", q: "CATNR=116" },
 ];
 const MAX_PER_GROUP = 600;
 
@@ -35,7 +38,11 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
       all.push(...items);
       live++;
     } catch {
-      all.push(...(fallback as RawTle[]).filter((f) => f.source === g.key));
+      all.push(
+        ...(fallback as RawTle[]).filter(
+          (f) => f.source === g.key && (g.key !== "derelict" || f.l1.slice(2, 7).trim() === g.q.split("=")[1]),
+        ),
+      );
     }
   }
   const data = { objects: all, live: live === GROUPS.length };
@@ -52,20 +59,22 @@ export const ghostStory = createServerFn({ method: "POST" })
         origin: z.string().max(100),
         altitudeKm: z.number(),
         launchYear: z.string().max(10),
-        source: z.enum(["cosmos-2251-debris", "iridium-33-debris", "1999-025"]),
+        source: z.enum(["cosmos-2251-debris", "iridium-33-debris", "1999-025", "derelict"]),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env['LOVABLE_API_KEY'];
     if (!key) throw new Error("AI is not configured");
-    const ev = EVENT_META[data.source as EventKey];
+    const z0 = data.source === "derelict" ? ZOMBIES[String(Number(data.norad))] : undefined;
+    const ev = z0 ?? EVENT_META[data.source as EventKey];
+    if (!ev.facts) throw new Error("This ghost's history is unknown.");
     const prompt = `You are the restless ghost of one fragment of space debris, speaking to the living on Halloween night.
 
 STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
 ${ev.facts}
 ${ev.forbid}
-I am fragment number ${data.norad} of that wreck. Today I race around Earth at about 27,000 km/h, ${Math.round(data.altitudeKm)} km up, circling every ~100 minutes, trapped in a cold cosmic purgatory with thousands of other fragments, a threat to every living satellite that passes.
+${z0 ? "I am still in one piece, a whole dead spacecraft." : `I am fragment number ${data.norad} of that wreck.`} Today I race around Earth at about 27,000 km/h, ${Math.round(data.altitudeKm)} km up, circling every ~100 minutes, trapped in a cold cosmic purgatory among thousands of dead things, a threat to every living satellite that passes.
 
 Write a 70-90 word first-person ghost story. Heavy Halloween horror mood: cold, endless circling, an eternal haunt above Earth, a chilling warning to the living. Make it crystal clear (1) who I was in life, (2) exactly how I died, per the facts above, (3) how I haunt orbit today.
 
@@ -121,4 +130,32 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
       .replace(/\s{2,}/g, " ")
       .trim();
     return { text: clean };
+  });
+
+/** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
+export const ghostVoice = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ text: z.string().min(1).max(1500) }).parse(d))
+  .handler(async ({ data }) => {
+    const key = process.env["ELEVENLABS_API_KEY"];
+    if (!key) return { audio: null as string | null, reason: "no-key" };
+    const res = await fetch(
+      "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb?output_format=mp3_44100_128",
+      {
+        method: "POST",
+        headers: { "xi-api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: data.text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: { stability: 0.35, similarity_boost: 0.75, style: 0.6, use_speaker_boost: true, speed: 0.85 },
+        }),
+      },
+    );
+    if (!res.ok) {
+      console.error(`ElevenLabs failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
+      return { audio: null as string | null, reason: `elevenlabs-${res.status}` };
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { audio: btoa(bin), reason: "ok" };
   });

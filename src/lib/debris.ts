@@ -1,4 +1,4 @@
-export { EVENT_META } from "./events";
+export { EVENT_META, ZOMBIES } from "./events";
 import * as sat from "satellite.js";
 import type { RawTle } from "./orbit.functions";
 
@@ -6,6 +6,7 @@ export const ORIGINS: Record<string, string> = {
   "cosmos-2251-debris": "Cosmos 2251 collision (2009)",
   "iridium-33-debris": "Iridium 33 collision (2009)",
   "1999-025": "Fengyun-1C ASAT test (2007)",
+  derelict: "Zombie satellites (intact)",
 };
 
 export const EVENTS: Record<string, { mission: string; death: string; short: string }> = {
@@ -23,6 +24,11 @@ export const EVENTS: Record<string, { mission: string; death: string; short: str
     mission: "a Chinese weather satellite that photographed clouds and storms from space",
     death: "On January 11, 2007 China deliberately destroyed it with a missile in an anti-satellite weapons test, shattering it into thousands of pieces",
     short: "In 2007 a missile test blew up a Chinese weather satellite, creating the largest debris cloud in history.",
+  },
+  derelict: {
+    mission: "famous spacecraft that died whole",
+    death: "Vanguard 1 (1958, oldest object in orbit), Envisat (8-ton European giant, silent since 2012) and Transit 4A (1961, first nuclear power source in space) still circle Earth intact",
+    short: "These spacecraft never shattered — they simply died and kept circling, whole and silent.",
   },
 };
 

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getDebris, ghostStory } from "@/lib/orbit.functions";
-import { buildGhosts, EVENT_META, EVENTS, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
+import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
+import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
 
@@ -99,8 +99,9 @@ function Index() {
             <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
               Each ghost is a piece of shrapnel from a major orbital catastrophe.
             </p>
-            <ul className="mt-3 space-y-1 text-xs">
-              {Object.entries(stats.by).map(([k, v]) => (
+            <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Debris Fragments</p>
+            <ul className="mt-1 space-y-1 text-xs">
+              {Object.entries(stats.by).filter(([k]) => k !== "derelict").map(([k, v]) => (
                 <li key={k}>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -116,6 +117,32 @@ function Index() {
                       <p className="font-pixel text-[10px] uppercase text-spirit">{ORIGINS[k]}</p>
                       <p className="mt-2">{EVENTS[k]?.short}</p>
                       <p className="mt-2 text-xs text-muted-foreground">{EVENTS[k]?.death}.</p>
+                      <p className="mt-2 text-xs text-ghost">
+                        {focus === k ? "Showing only these ghosts. Click again to show all." : "Click the name to highlight these ghosts."}
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Derelict Spacecraft</p>
+            <ul className="mt-1 space-y-1 text-xs">
+              {Object.entries(stats.by).filter(([k]) => k === "derelict").map(([k, v]) => (
+                <li key={k}>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={() => setFocus((f) => (f === k ? null : k))}
+                        className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
+                      >
+                        <span className="text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
+                        <span className="font-mono text-ghost">{v}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" className="w-72 border-spirit/40 text-sm">
+                      <p className="font-pixel text-[10px] uppercase text-spirit">{ORIGINS[k]}</p>
+                      <p className="mt-2">{EVENTS[k]?.short}</p>
+                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{Object.values(ZOMBIES).map((z) => <li key={z.short}>{z.short}</li>)}</ul>
                       <p className="mt-2 text-xs text-ghost">
                         {focus === k ? "Showing only these ghosts. Click again to show all." : "Click the name to highlight these ghosts."}
                       </p>
@@ -170,7 +197,15 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceRef = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      window.speechSynthesis?.cancel();
+      audioRef.current?.pause();
+    },
+    [],
+  );
   useEffect(() => {
     if (!story) return;
     let i = 0;
@@ -182,7 +217,27 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
     return () => clearInterval(t);
   }, [story]);
 
-  const speak = (text: string) => {
+  const speak = async (text: string) => {
+    audioRef.current?.pause();
+    window.speechSynthesis?.cancel();
+    if (voiceRef.current === null) {
+      try {
+        const v = await ghostVoice({ data: { text } });
+        voiceRef.current = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
+      } catch {
+        voiceRef.current = "";
+      }
+    }
+    if (voiceRef.current) {
+      const a = new Audio(voiceRef.current);
+      audioRef.current = a;
+      try {
+        await a.play();
+        return;
+      } catch {
+        /* fall back to browser voice */
+      }
+    }
     const s = window.speechSynthesis;
     if (!s) return;
     s.cancel();
@@ -193,7 +248,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   };
 
   const hear = async () => {
-    if (story) return speak(story);
+    if (story) return void speak(story);
     setLoading(true);
     setErr(null);
     try {
@@ -208,7 +263,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         },
       });
       setStory(r.text);
-      speak(r.text);
+      void speak(r.text);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "The ghost went silent.");
     } finally {
@@ -223,11 +278,21 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">✕</button>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">Country</dt>
-        <dd>{EVENT_META[ghost.source as keyof typeof EVENT_META]?.flag} {EVENT_META[ghost.source as keyof typeof EVENT_META]?.country}</dd>
-        <dt className="text-muted-foreground">Debris Event</dt>
-        <dd>{EVENT_META[ghost.source as keyof typeof EVENT_META]?.event}</dd>
-        <dt className="text-muted-foreground">Fragment</dt><dd className="font-mono">NORAD {ghost.id}</dd>
+        {(() => {
+          const z = ghost.source === "derelict" ? ZOMBIES[String(Number(ghost.id))] : undefined;
+          const m = z ?? EVENT_META[ghost.source as keyof typeof EVENT_META];
+          return (
+            <>
+              <dt className="text-muted-foreground">Country</dt>
+              <dd>{m?.flag} {m?.country}</dd>
+              <dt className="text-muted-foreground">{z ? "Category" : "Debris Event"}</dt>
+              <dd>{z ? "Derelict Spacecraft" : m?.event}</dd>
+              {z && (<><dt className="text-muted-foreground">Status</dt><dd>{z.status}</dd></>)}
+              <dt className="text-muted-foreground">{z ? "Spacecraft" : "Fragment"}</dt>
+              <dd className="font-mono">NORAD {ghost.id}</dd>
+            </>
+          );
+        })()}
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
