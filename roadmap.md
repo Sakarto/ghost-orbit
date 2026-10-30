@@ -1,8 +1,8 @@
 # Roadmap
-- [ ] Keep George as the only voice and remove selector
-- [ ] Update direct Anthropic model and badge — awaiting available-model choice because requested models are retired
-- [ ] Add dated, sourced ESA macro debris context beside histogram
-- [ ] Preserve ElevenLabs error body and guard missing story lore; test both
+- [x] Keep George as the only voice and remove selector
+- [ ] Verify direct Anthropic Opus 5.5 generation — blocked by missing Anthropic API key; code upgraded, gateway Sonnet fallback preserved
+- [x] Add dated, sourced ESA macro debris context beside histogram
+- [x] Preserve ElevenLabs error body and guard missing story lore; test both
 - [x] Deep George/Roger voices, lower stability, pitched-down playback, and cosmic-horror storytelling verified
 - [x] Process ghost voices as haunted radio transmissions and verify playback
 - [x] Remove Global Orbital Graveyard header overlay
