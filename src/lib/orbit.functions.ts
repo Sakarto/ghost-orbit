@@ -12,6 +12,10 @@ const GROUPS = [
   { key: "derelict", q: "CATNR=5" },
   { key: "derelict", q: "CATNR=27386" },
   { key: "derelict", q: "CATNR=116" },
+  { key: "derelict", q: "CATNR=340" },
+  { key: "derelict", q: "CATNR=10684" },
+  { key: "derelict", q: "CATNR=13603" },
+  { key: "derelict", q: "CATNR=11" },
 ];
 const MAX_PER_GROUP = 600;
 
