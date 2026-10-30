@@ -236,7 +236,7 @@ function Index() {
                   <dt className="text-[11px] text-muted-foreground">debris objects {ESA_CONTEXT.large.size}</dt>
                 </div>
                 <div>
-                  <dd className="font-mono text-xl text-ghost">~{ESA_CONTEXT.small.count / 1000000} million</dd>
+                  <dd className="whitespace-nowrap font-mono text-base leading-7 text-ghost">~{ESA_CONTEXT.small.count / 1000000} million</dd>
                   <dt className="text-[11px] text-muted-foreground">objects {ESA_CONTEXT.small.size}</dt>
                 </div>
               </dl>

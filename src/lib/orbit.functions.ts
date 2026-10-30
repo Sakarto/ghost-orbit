@@ -4,6 +4,7 @@ import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 import { GHOST_VOICE_SETTINGS, VOICE_IDS } from "@/lib/ghost-voice-config";
 import { readGhostAudio } from "@/lib/ghost-response";
+import { getGhostLore } from "@/lib/ghost-lore";
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
 
@@ -72,8 +73,7 @@ export const ghostStory = createServerFn({ method: "POST" })
     const key = process.env["LOVABLE_API_KEY"];
     if (!anthropicKey && !key) throw new Error("AI is not configured");
     const z0 = data.source === "derelict" ? ZOMBIES[String(Number(data.norad))] : undefined;
-    const ev = data.source === "derelict" ? z0 : EVENT_META[data.source as EventKey];
-    if (!ev?.facts) throw new Error("This ghost's history is unknown.");
+    const ev = getGhostLore(data.source, data.norad);
     const prompt = `You are a terrifying, exhausted satellite spirit speaking through a haunted radio transmission on Halloween night, not a polished documentary narrator. Your voice is intimate, broken, pleading, then quietly threatening: short breathless sentences, unsettling silences, and dread rather than theatrical exposition.
 
 STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
