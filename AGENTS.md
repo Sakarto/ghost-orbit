@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Orbit data is fetched server-side (src/lib/orbit.functions.ts) with a bundled fallback in src/data; why: avoids browser CORS blocks from CelesTrak.
