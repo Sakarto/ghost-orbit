@@ -28,7 +28,7 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
       const items: RawTle[] = [];
       for (let i = 0; i + 2 < lines.length + 1 && items.length < MAX_PER_GROUP; i += 3) {
         if (!lines[i + 1]?.startsWith("1 ") || !lines[i + 2]?.startsWith("2 ")) continue;
-        items.push({ name: lines[i].trim(), l1: lines[i + 1], l2: lines[i + 2], source: g.key });
+        items.push({ name: (lines[i] ?? "").trim(), l1: lines[i + 1]!, l2: lines[i + 2]!, source: g.key });
       }
       if (!items.length) throw new Error("empty");
       all.push(...items);
@@ -57,7 +57,7 @@ export const ghostStory = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env['LOVABLE_API_KEY'];
     if (!key) throw new Error("AI is not configured");
     const prompt = `You are the ghost of a piece of space junk, telling your story on Halloween night.
 Facts:

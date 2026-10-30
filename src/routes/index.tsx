@@ -163,8 +163,8 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
           origin: ORIGINS[ghost.source],
           altitudeKm: ghost.alt,
           launchYear: ghost.launchYear,
-          mission: EVENTS[ghost.source].mission,
-          death: EVENTS[ghost.source].death,
+          mission: EVENTS[ghost.source]!.mission,
+          death: EVENTS[ghost.source]!.death,
         },
       });
       setStory(r.text);
