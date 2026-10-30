@@ -86,6 +86,7 @@ export function propagateAll(ghosts: Ghost[], date: Date): Ghost[] {
 export function histogram(ghosts: Ghost[], bin = 100) {
   const map = new Map<number, number>();
   for (const g of ghosts) {
+    if (g.alt > 2500) continue; // GPS/GLONASS-height zombies would stretch the chart
     const b = Math.floor(g.alt / bin) * bin;
     map.set(b, (map.get(b) ?? 0) + 1);
   }
