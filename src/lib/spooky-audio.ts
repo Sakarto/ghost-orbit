@@ -1,5 +1,6 @@
 // Synthesized Halloween sound effects (no audio files): a radio-static burst, a spectral chime,
 // and a faint cosmic wind/drone that loops while a ghost speaks.
+import { GHOST_PLAYBACK_RATE } from "@/lib/ghost-voice-config";
 
 let ctx: AudioContext | null = null;
 function ac() {
@@ -19,6 +20,9 @@ export function unlockSpookyAudio() {
 export function createGhostTransmission(audio: HTMLAudioElement): () => void {
   const c = ac();
   if (!c) throw new Error("Audio processing is unavailable");
+  // Browsers preserve pitch by default; turn that off so slower playback also deepens the voice.
+  audio.preservesPitch = false;
+  audio.playbackRate = GHOST_PLAYBACK_RATE;
   const source = c.createMediaElementSource(audio);
   const highpass = c.createBiquadFilter();
   highpass.type = "highpass";
