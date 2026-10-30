@@ -29,6 +29,12 @@ function Index() {
   const [sel, setSel] = useState<Ghost | null>(null);
   const [rotate, setRotate] = useState(true);
   const [focus, setFocus] = useState<string | null>(null);
+  const [cat, setCat] = useState<"all" | "zombie" | "debris">("all");
+  const visible = ghosts.filter(
+    (g) =>
+      (focus ? g.source === focus : true) &&
+      (cat === "all" || (cat === "zombie" ? g.source === "derelict" : g.source !== "derelict")),
+  );
 
   useEffect(() => {
     getDebris()
@@ -54,7 +60,7 @@ function Index() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground">
       <Suspense fallback={null}>
-        <GhostGlobe ghosts={focus ? ghosts.filter((g) => g.source === focus) : ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
+        <GhostGlobe ghosts={visible} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
       </Suspense>
 
       <header className="pointer-events-none absolute left-6 top-5 z-10">
@@ -81,12 +87,37 @@ function Index() {
         ) : (
           <>
             <p className="mt-2 text-3xl font-bold text-ghost">
-              {(focus ? stats.by[focus] ?? 0 : ghosts.length).toLocaleString()}
+              {visible.length.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">
-              {focus ? `Showing ${EVENT_META[focus as keyof typeof EVENT_META].fragLabel}` : "ghosts tracked"} ·{" "}
+              {focus
+                ? `Showing ${EVENT_META[focus as keyof typeof EVENT_META].fragLabel}`
+                : cat === "zombie"
+                  ? "intact zombie satellites"
+                  : cat === "debris"
+                    ? "explosion & collision fragments"
+                    : "orbital ghosts tracked"}{" "}
+              ·{" "}
               {live ? "live from CelesTrak" : "backup data"}
             </p>
+            <div className="mt-3 grid grid-cols-3 gap-1 rounded-md border border-border p-0.5 text-[10px]">
+              {([
+                ["all", "All Orbital Ghosts"],
+                ["zombie", "Intact Zombie Satellites"],
+                ["debris", "Explosion / Collision Debris"],
+              ] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => {
+                    setCat(k);
+                    setFocus(null);
+                  }}
+                  className={`rounded px-1 py-1 leading-tight transition ${cat === k ? "bg-spirit text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {focus && (
               <button
                 onClick={() => setFocus(null)}
@@ -96,17 +127,20 @@ function Index() {
               </button>
             )}
             <h3 className="mt-4 font-pixel text-[9px] uppercase text-spirit">Debris Cloud Breakdown</h3>
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            <p className="mt-2 text-[10px] uppercase tracking-wide text-ghost">💥 Exploded Shrapnel Clouds</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">
               Each ghost is a piece of shrapnel from a major orbital catastrophe.
             </p>
-            <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Debris Fragments</p>
             <ul className="mt-1 space-y-1 text-xs">
               {Object.entries(stats.by).filter(([k]) => k !== "derelict").map(([k, v]) => (
                 <li key={k}>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
-                        onClick={() => setFocus((f) => (f === k ? null : k))}
+                        onClick={() => {
+                          setCat("all");
+                          setFocus((f) => (f === k ? null : k));
+                        }}
                         className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
                       >
                         <span className="text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
@@ -125,14 +159,20 @@ function Index() {
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Derelict Spacecraft</p>
+            <p className="mt-3 text-[10px] uppercase tracking-wide text-[color:var(--zombie)]">🧟 Intact Defunct Satellites</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              Whole spacecraft that died — out of fuel, broken or retired — still drifting silently.
+            </p>
             <ul className="mt-1 space-y-1 text-xs">
               {Object.entries(stats.by).filter(([k]) => k === "derelict").map(([k, v]) => (
                 <li key={k}>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
-                        onClick={() => setFocus((f) => (f === k ? null : k))}
+                        onClick={() => {
+                          setCat("all");
+                          setFocus((f) => (f === k ? null : k));
+                        }}
                         className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
                       >
                         <span className="text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
@@ -283,10 +323,14 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
           const m = z ?? EVENT_META[ghost.source as keyof typeof EVENT_META];
           return (
             <>
+              <dt className="text-muted-foreground">Type</dt>
+              <dd className={z ? "font-semibold text-[color:var(--zombie)]" : "font-semibold text-ghost"}>
+                {z ? "🧟 Intact Defunct Spacecraft" : "💥 Collision Fragment"}
+              </dd>
               <dt className="text-muted-foreground">Country</dt>
               <dd>{m?.flag} {m?.country}</dd>
               <dt className="text-muted-foreground">{z ? "Category" : "Debris Event"}</dt>
-              <dd>{z ? "Derelict Spacecraft" : m?.event}</dd>
+              <dd>{z ? "Died whole" : m?.event}</dd>
               {z && (<><dt className="text-muted-foreground">Status</dt><dd>{z.status}</dd></>)}
               <dt className="text-muted-foreground">{z ? "Spacecraft" : "Fragment"}</dt>
               <dd className="font-mono">NORAD {ghost.id}</dd>

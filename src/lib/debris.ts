@@ -27,7 +27,7 @@ export const EVENTS: Record<string, { mission: string; death: string; short: str
   },
   derelict: {
     mission: "famous spacecraft that died whole",
-    death: "Vanguard 1 (1958, oldest object in orbit), Envisat (8-ton European giant, silent since 2012) and Transit 4A (1961, first nuclear power source in space) still circle Earth intact",
+    death: "these famous dead spacecraft still circle Earth intact",
     short: "These spacecraft never shattered — they simply died and kept circling, whole and silent.",
   },
 };
