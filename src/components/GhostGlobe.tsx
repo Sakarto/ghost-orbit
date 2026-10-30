@@ -87,9 +87,9 @@ export default function GhostGlobe({
           if (el.current) el.current.style.cursor = d ? "pointer" : "grab";
         });
       const gm = g.globeMaterial();
-      gm.color = new THREE.Color("#8fa6c8");
+      gm.color = new THREE.Color("#6b7fa3");
       gm.emissive = new THREE.Color("#0c1630");
-      gm.emissiveIntensity = 0.6;
+      gm.emissiveIntensity = 0.4;
       g.controls().autoRotate = true;
       g.controls().autoRotateSpeed = 0.25;
       g.pointOfView({ altitude: 2.6 });
