@@ -1,6 +1,6 @@
 # Roadmap
 - [ ] Keep George as the only voice and remove selector
-- [ ] Update direct Anthropic model and badge — awaiting available-model choice because requested models are retired
+- [ ] Upgrade direct Anthropic model to available Opus 5.5; retain existing gateway Sonnet fallback and accurate badges
 - [ ] Add dated, sourced ESA macro debris context beside histogram
 - [ ] Preserve ElevenLabs error body and guard missing story lore; test both
 - [x] Deep George/Roger voices, lower stability, pitched-down playback, and cosmic-horror storytelling verified

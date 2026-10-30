@@ -8,8 +8,7 @@ describe("haunted voice tuning", () => {
   it("sets unstable spirit delivery within the requested 0.20–0.25 range", () => {
     expect(GHOST_VOICE_SETTINGS.stability).toBe(0.22);
   });
-  it("defaults to George and includes Roger", () => {
-    expect(VOICE_IDS[0]).toBe("JBFqnCBsd6RMkjVDRZzb");
-    expect(VOICE_IDS).toContain("CwhRBWXzGAHq8TQ4Fs17");
+  it("allows only George", () => {
+    expect(VOICE_IDS).toEqual(["JBFqnCBsd6RMkjVDRZzb"]);
   });
 });

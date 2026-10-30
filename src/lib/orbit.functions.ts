@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 import { GHOST_VOICE_SETTINGS, VOICE_IDS } from "@/lib/ghost-voice-config";
+import { readGhostAudio } from "@/lib/ghost-response";
 
 export type RawTle = { name: string; l1: string; l2: string; source: string };
 
@@ -71,8 +72,8 @@ export const ghostStory = createServerFn({ method: "POST" })
     const key = process.env["LOVABLE_API_KEY"];
     if (!anthropicKey && !key) throw new Error("AI is not configured");
     const z0 = data.source === "derelict" ? ZOMBIES[String(Number(data.norad))] : undefined;
-    const ev = z0 ?? EVENT_META[data.source as EventKey];
-    if (!ev.facts) throw new Error("This ghost's history is unknown.");
+    const ev = data.source === "derelict" ? z0 : EVENT_META[data.source as EventKey];
+    if (!ev?.facts) throw new Error("This ghost's history is unknown.");
     const prompt = `You are a terrifying, exhausted satellite spirit speaking through a haunted radio transmission on Halloween night, not a polished documentary narrator. Your voice is intimate, broken, pleading, then quietly threatening: short breathless sentences, unsettling silences, and dread rather than theatrical exposition.
 
 STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
@@ -86,9 +87,9 @@ Weave in two or three vivid cosmic-horror or paranormal electronic-voice metapho
 
 This text is read aloud by a voice engine, so write ONLY natural spoken English sentences. Absolutely no sound effects or onomatopoeia (no "shhh", "ssshhk", "bzzt", "crackle", "hiss"), no asterisks or stage directions, no stretched letters, no ellipses chains, no emojis, no acronyms. Plain text, no title.`;
     const body = JSON.stringify({
-      // claude-3-opus-20240229 has been retired by Anthropic, so use the current Opus alias.
-      model: anthropicKey ? "claude-opus-4-1" : "anthropic/claude-sonnet-5",
-      max_tokens: 1024,
+      model: anthropicKey ? "claude-opus-5-5" : "anthropic/claude-sonnet-5",
+      max_tokens: anthropicKey ? 16000 : 1024,
+      ...(anthropicKey ? { output_config: { effort: "medium" } } : {}),
       stream: true,
       messages: [{ role: "user", content: prompt }],
     });
@@ -139,7 +140,7 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
       .replace(/(\w)\1{3,}/g, "$1")
       .replace(/\s{2,}/g, " ")
       .trim();
-    return { text: clean, model: anthropicKey ? "Claude Opus" : "Claude Sonnet" };
+    return { text: clean, model: anthropicKey ? "Claude Opus 5.5" : "Claude Sonnet 5" };
   });
 
 /** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
@@ -162,12 +163,5 @@ export const ghostVoice = createServerFn({ method: "POST" })
         }),
       },
     );
-    if (!res.ok) {
-      console.error(`ElevenLabs failed [${res.status}]: ${(await res.text()).slice(0, 300)}`);
-      return { audio: null as string | null, reason: `elevenlabs-${res.status}` };
-    }
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    let bin = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    return { audio: btoa(bin), reason: "ok" };
+    return readGhostAudio(res);
   });

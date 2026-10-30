@@ -247,7 +247,6 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const playbackId = useRef(0);
   const mounted = useRef(true);
   const voiceCache = useRef<Record<string, string>>({});
-  const [voice, setVoice] = useState<(typeof VOICES)[number]["id"]>(VOICES[0].id);
   const [speaking, setSpeaking] = useState(false);
   const [model, setModel] = useState("Claude");
   const stopDrone = useRef<(() => void) | null>(null);
@@ -286,7 +285,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const speak = async (text: string) => {
     if (!mounted.current) return;
     const id = ++playbackId.current;
-    const chosenVoice = voice;
+    const chosenVoice = VOICES[0].id;
     audioRef.current?.pause();
     window.speechSynthesis?.cancel();
     endSpeech();
@@ -390,20 +389,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
-      <label className="mt-4 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        Ghost voice
-        <select
-          value={voice}
-          onChange={(e) => setVoice(e.target.value as typeof voice)}
-          className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-        >
-          {VOICES.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <p className="mt-4 text-xs text-muted-foreground">{VOICES[0].label}</p>
       <button
         onClick={hear}
         disabled={loading}
