@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { playStaticBurst, startDrone } from "@/lib/spooky-audio";
+import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
@@ -70,14 +70,6 @@ function Index() {
           Earth's orbit is haunted — and we're running out of{" "}
           <em className="text-ghost drop-shadow-[0_0_8px_var(--ghost)]">space</em>.
         </p>
-        <div className="mt-3 max-w-xl rounded-md border border-spirit/40 bg-card/70 px-3 py-2 backdrop-blur">
-          <p className="font-pixel text-[9px] uppercase tracking-wide text-spirit">☠ The Global Orbital Graveyard</p>
-          <p className="mt-1 text-xs leading-snug text-foreground/90">
-            <span className="font-bold text-ghost">~36,500+</span> tracked lethal fragments &{" "}
-            <span className="font-bold text-[color:var(--zombie)]">~3,000+</span> silent dead spacecraft haunt Earth's orbit.
-            Showing <span className="font-mono text-ghost">{visible.length.toLocaleString()}</span> actively tracked radar targets in this sector.
-          </p>
-        </div>
       </header>
       <p className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 text-[10px] text-muted-foreground">
         Stories by Claude (Anthropic) · Voices by ElevenLabs · Orbits from CelesTrak
@@ -256,6 +248,9 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [err, setErr] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stopTransmission = useRef<(() => void) | null>(null);
+  const playbackId = useRef(0);
+  const mounted = useRef(true);
   const voiceCache = useRef<Record<string, string>>({});
   const [voice, setVoice] = useState<(typeof VOICES)[number]["id"]>(VOICES[0].id);
   const [speaking, setSpeaking] = useState(false);
@@ -263,14 +258,22 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const stopDrone = useRef<(() => void) | null>(null);
   const endSpeech = () => {
     setSpeaking(false);
+    stopTransmission.current?.();
+    stopTransmission.current = null;
     stopDrone.current?.();
     stopDrone.current = null;
   };
   useEffect(
-    () => () => {
-      window.speechSynthesis?.cancel();
-      audioRef.current?.pause();
-      stopDrone.current?.();
+    () => {
+      mounted.current = true;
+      return () => {
+        mounted.current = false;
+        playbackId.current++;
+        window.speechSynthesis?.cancel();
+        audioRef.current?.pause();
+        stopTransmission.current?.();
+        stopDrone.current?.();
+      };
     },
     [],
   );
@@ -286,29 +289,41 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   }, [story]);
 
   const speak = async (text: string) => {
+    if (!mounted.current) return;
+    const id = ++playbackId.current;
+    const chosenVoice = voice;
     audioRef.current?.pause();
     window.speechSynthesis?.cancel();
     endSpeech();
     setSpeaking(true);
-    playStaticBurst();
-    stopDrone.current = startDrone();
-    if (voiceCache.current[voice] === undefined) {
+    if (voiceCache.current[chosenVoice] === undefined) {
       try {
-        const v = await ghostVoice({ data: { text, voice } });
-        voiceCache.current[voice] = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
+        const v = await ghostVoice({ data: { text, voice: chosenVoice } });
+        voiceCache.current[chosenVoice] = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
       } catch {
-        voiceCache.current[voice] = "";
+        voiceCache.current[chosenVoice] = "";
       }
     }
-    const src = voiceCache.current[voice];
+    if (!mounted.current || id !== playbackId.current) return;
+    const beginTransmission = () => {
+      if (!mounted.current || id !== playbackId.current) return;
+      playStaticBurst();
+      stopDrone.current = startDrone();
+    };
+    const src = voiceCache.current[chosenVoice];
     if (src) {
       const a = new Audio(src);
       audioRef.current = a;
       a.onended = endSpeech;
+      a.onplaying = beginTransmission;
+      a.onerror = endSpeech;
       try {
+        stopTransmission.current = createGhostTransmission(a);
         await a.play();
         return;
       } catch {
+        stopTransmission.current?.();
+        stopTransmission.current = null;
         /* fall back to browser voice */
       }
     }
@@ -318,10 +333,13 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
     u.pitch = 0.3;
     u.rate = 0.8;
     u.onend = endSpeech;
+    u.onerror = endSpeech;
+    u.onstart = beginTransmission;
     s.speak(u);
   };
 
   const hear = async () => {
+    unlockSpookyAudio();
     if (story) return void speak(story);
     setLoading(true);
     setErr(null);
@@ -336,6 +354,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
           source: ghost.source as keyof typeof EVENT_META,
         },
       });
+      if (!mounted.current) return;
       setStory(r.text);
       setModel(r.model);
       void speak(r.text);
@@ -366,8 +385,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
               </dd>
               <dt className="text-muted-foreground">Country</dt>
               <dd>{m?.flag} {m?.country}</dd>
-              <dt className="text-muted-foreground">{z ? "Category" : "Debris Event"}</dt>
-              <dd>{z ? "Died whole" : m?.event}</dd>
+              {!z && (<><dt className="text-muted-foreground">Debris Event</dt><dd>{m?.event}</dd></>)}
               {z && (<><dt className="text-muted-foreground">Status</dt><dd>{z.status}</dd></>)}
               <dt className="text-muted-foreground">{z ? "Spacecraft" : "Fragment"}</dt>
               <dd className="font-mono">NORAD {ghost.id}</dd>

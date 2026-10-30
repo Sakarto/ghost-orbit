@@ -9,3 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Orbit data is fetched server-side (src/lib/orbit.functions.ts) with a bundled fallback in src/data; why: avoids browser CORS blocks from CelesTrak.
+- ElevenLabs playback uses a disposable Web Audio transmission graph in spooky-audio; why: centralizes radio effects and disconnects feedback/modulation on replay, end, or panel dismissal. Browser speech synthesis remains an unprocessed fallback because its output cannot be routed through Web Audio.
