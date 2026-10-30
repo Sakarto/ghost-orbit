@@ -7,6 +7,24 @@ export const ORIGINS: Record<string, string> = {
   "1999-025": "Fengyun-1C ASAT test (2007)",
 };
 
+export const EVENTS: Record<string, { mission: string; death: string; short: string }> = {
+  "cosmos-2251-debris": {
+    mission: "a Russian military communications satellite that relayed messages for the army, launched in 1993 and switched off years later",
+    death: "On February 10, 2009 it smashed into the American Iridium 33 satellite at about 42,000 km/h — the first time two whole satellites ever crashed into each other",
+    short: "In 2009 a dead Russian satellite and a working American one crashed head-on — the first satellite-on-satellite collision ever.",
+  },
+  "iridium-33-debris": {
+    mission: "an American satellite in the Iridium network that carried satellite phone calls for people anywhere on Earth",
+    death: "On February 10, 2009 a dead Russian satellite, Cosmos 2251, slammed into it at about 42,000 km/h and blew it apart",
+    short: "The working American phone satellite destroyed in the same 2009 crash with Cosmos 2251.",
+  },
+  "1999-025": {
+    mission: "a Chinese weather satellite that photographed clouds and storms from space",
+    death: "On January 11, 2007 China deliberately destroyed it with a missile in an anti-satellite weapons test, shattering it into thousands of pieces",
+    short: "In 2007 a missile test blew up a Chinese weather satellite, creating the largest debris cloud in history.",
+  },
+};
+
 export type Ghost = {
   id: string;
   name: string;

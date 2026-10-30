@@ -45,13 +45,22 @@ export const ghostStory = createServerFn({ method: "POST" })
         origin: z.string().max(100),
         altitudeKm: z.number(),
         launchYear: z.string().max(10),
+        mission: z.string().max(400),
+        death: z.string().max(400),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
-    const prompt = `You are the ghost of a piece of space debris. Facts: name "${data.name}", NORAD ID ${data.norad}, born from: ${data.origin}, original launch year ${data.launchYear}, currently haunting an orbit ${Math.round(data.altitudeKm)} km above Earth. Write a 60-80 word first-person spooky ghost story using these real facts. Eerie, poetic, a little sad, with a subtle warning about orbital crowding. Plain text only, no title.`;
+    const prompt = `You are the ghost of a piece of space junk, telling your story on Halloween night.
+Facts:
+- My name: ${data.name} (tracking number ${data.norad})
+- In life I was: ${data.mission}
+- How I died: ${data.death}
+- Today I drift ${Math.round(data.altitudeKm)} km above Earth, circling the planet about every 100 minutes.
+
+Write a 60-80 word first-person ghost story in three clear beats: (1) what I was sent up to do, (2) exactly how I died, (3) how I haunt Earth's orbit now and threaten living satellites. Spooky, punchy, simple words anyone understands. No acronyms or technical jargon. Plain text, no title.`;
     const res = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
       method: "POST",
       headers: {
