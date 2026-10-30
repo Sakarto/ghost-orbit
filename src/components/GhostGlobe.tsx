@@ -21,7 +21,10 @@ export default function GhostGlobe({
 
   useEffect(() => {
     let cancelled = false;
-    import("globe.gl").then(({ default: Globe }) => {
+    Promise.all([import("globe.gl"), import("three")]).then(([{ default: Globe }, THREE]) => {
+      const geo = new THREE.SphereGeometry(0.45, 8, 8);
+      const mat = new THREE.MeshBasicMaterial({ color: "#7dffb0", transparent: true, opacity: 0.9 });
+      const selMat = new THREE.MeshBasicMaterial({ color: "#c79bff" });
       if (cancelled || !el.current) return;
       const g = new (Globe as any)(el.current)
         .globeImageUrl("https://unpkg.com/three-globe/example/img/earth-night.jpg")
@@ -29,20 +32,22 @@ export default function GhostGlobe({
         .backgroundImageUrl("https://unpkg.com/three-globe/example/img/night-sky.png")
         .atmosphereColor("#9b6cff")
         .atmosphereAltitude(0.18)
-        .pointLat("lat")
-        .pointLng("lng")
-        .pointAltitude((d: Ghost) => d.alt / EARTH_R)
-        .pointRadius((d: Ghost) => (d.id === selRef.current ? 0.9 : 0.28))
-        .pointColor((d: Ghost) => (d.id === selRef.current ? "#c79bff" : "rgba(120,255,170,0.9)"))
-        .pointResolution(4)
-        .pointsTransitionDuration(0)
-        .pointLabel((d: Ghost) => `<div style="font-family:monospace;color:#9effc0">👻 ${d.name}<br/>${Math.round(d.alt)} km</div>`)
-        .onPointClick((d: Ghost) => cbRef.current(d));
+        .objectLat("lat")
+        .objectLng("lng")
+        .objectAltitude((d: Ghost) => d.alt / EARTH_R)
+        .objectFacesSurface(false)
+        .objectThreeObject((d: Ghost) => {
+          const m = new THREE.Mesh(geo, d.id === selRef.current ? selMat : mat);
+          if (d.id === selRef.current) m.scale.setScalar(3);
+          return m;
+        })
+        .objectLabel((d: Ghost) => `<div style="font-family:monospace;color:#9effc0">👻 ${d.name}<br/>${Math.round(d.alt)} km</div>`)
+        .onObjectClick((d: Ghost) => cbRef.current(d));
       g.controls().autoRotate = true;
       g.controls().autoRotateSpeed = 0.25;
       g.pointOfView({ altitude: 2.6 });
       globe.current = g;
-      g.pointsData(ghosts);
+      g.objectsData(ghosts);
       const resize = () => g.width(window.innerWidth).height(window.innerHeight);
       resize();
       window.addEventListener("resize", resize);
@@ -56,7 +61,7 @@ export default function GhostGlobe({
   }, []);
 
   useEffect(() => {
-    globe.current?.pointsData([...ghosts]);
+    globe.current?.objectsData([...ghosts]);
   }, [ghosts, selectedId]);
 
   return <div ref={el} className="absolute inset-0" />;
