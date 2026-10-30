@@ -27,7 +27,7 @@ export const EVENTS: Record<string, { mission: string; death: string; short: str
   },
   derelict: {
     mission: "famous spacecraft that died whole",
-    death: "Vanguard 1 (1958, oldest object in orbit), Envisat (8-ton European giant, silent since 2012) and Transit 4A (1961, first nuclear power source in space) still circle Earth intact",
+    death: "these famous dead spacecraft still circle Earth intact",
     short: "These spacecraft never shattered — they simply died and kept circling, whole and silent.",
   },
 };
@@ -74,7 +74,7 @@ export function propagateAll(ghosts: Ghost[], date: Date): Ghost[] {
     const p = pv?.position;
     if (!p || typeof p === "boolean") continue;
     const gd = sat.eciToGeodetic(p, gmst);
-    if (!isFinite(gd.height) || gd.height < 100 || gd.height > 5000) continue;
+    if (!isFinite(gd.height) || gd.height < 100 || gd.height > 25000) continue;
     g.lat = sat.degreesLat(gd.latitude);
     g.lng = sat.degreesLong(gd.longitude);
     g.alt = gd.height;
@@ -86,6 +86,7 @@ export function propagateAll(ghosts: Ghost[], date: Date): Ghost[] {
 export function histogram(ghosts: Ghost[], bin = 100) {
   const map = new Map<number, number>();
   for (const g of ghosts) {
+    if (g.alt > 2500) continue; // GPS/GLONASS-height zombies would stretch the chart
     const b = Math.floor(g.alt / bin) * bin;
     map.set(b, (map.get(b) ?? 0) + 1);
   }

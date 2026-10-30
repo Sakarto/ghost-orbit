@@ -12,6 +12,10 @@ const GROUPS = [
   { key: "derelict", q: "CATNR=5" },
   { key: "derelict", q: "CATNR=27386" },
   { key: "derelict", q: "CATNR=116" },
+  { key: "derelict", q: "CATNR=340" },
+  { key: "derelict", q: "CATNR=10684" },
+  { key: "derelict", q: "CATNR=13603" },
+  { key: "derelict", q: "CATNR=11" },
 ];
 const MAX_PER_GROUP = 600;
 
@@ -20,31 +24,34 @@ let cache: { at: number; data: { objects: RawTle[]; live: boolean } } | null = n
 
 export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
   if (cache && Date.now() - cache.at < 2 * 3600_000) return cache.data;
-  const all: RawTle[] = [];
-  let live = 0;
-  for (const g of GROUPS) {
-    try {
-      const res = await fetch(`https://celestrak.org/NORAD/elements/gp.php?${g.q}&FORMAT=tle`, {
-        headers: { "User-Agent": "GhostOrbit/1.0" },
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const lines = (await res.text()).trim().split(/\r?\n/).map((l) => l.trimEnd());
-      const items: RawTle[] = [];
-      for (let i = 0; i + 2 < lines.length + 1 && items.length < MAX_PER_GROUP; i += 3) {
-        if (!lines[i + 1]?.startsWith("1 ") || !lines[i + 2]?.startsWith("2 ")) continue;
-        items.push({ name: (lines[i] ?? "").trim(), l1: lines[i + 1]!, l2: lines[i + 2]!, source: g.key });
+  // Fetch every group in parallel with a short timeout so a slow or blocking source never stalls the page.
+  const results = await Promise.all(
+    GROUPS.map(async (g) => {
+      try {
+        const res = await fetch(`https://celestrak.org/NORAD/elements/gp.php?${g.q}&FORMAT=tle`, {
+          headers: { "User-Agent": "GhostOrbit/1.0" },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const lines = (await res.text()).trim().split(/\r?\n/).map((l) => l.trimEnd());
+        const items: RawTle[] = [];
+        for (let i = 0; i + 2 < lines.length + 1 && items.length < MAX_PER_GROUP; i += 3) {
+          if (!lines[i + 1]?.startsWith("1 ") || !lines[i + 2]?.startsWith("2 ")) continue;
+          items.push({ name: (lines[i] ?? "").trim(), l1: lines[i + 1]!, l2: lines[i + 2]!, source: g.key });
+        }
+        if (!items.length) throw new Error("empty");
+        return { items, live: true };
+      } catch {
+        const items = (fallback as RawTle[]).filter(
+          (f) =>
+            f.source === g.key && (g.key !== "derelict" || Number(f.l1.slice(2, 7)) === Number(g.q.split("=")[1])),
+        );
+        return { items, live: false };
       }
-      if (!items.length) throw new Error("empty");
-      all.push(...items);
-      live++;
-    } catch {
-      all.push(
-        ...(fallback as RawTle[]).filter(
-          (f) => f.source === g.key && (g.key !== "derelict" || Number(f.l1.slice(2, 7)) === Number(g.q.split("=")[1])),
-        ),
-      );
-    }
-  }
+    }),
+  );
+  const all = results.flatMap((r) => r.items);
+  const live = results.filter((r) => r.live).length;
   const data = { objects: all, live: live === GROUPS.length };
   if (data.live) cache = { at: Date.now(), data };
   return data;

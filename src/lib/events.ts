@@ -76,4 +76,44 @@ export const ZOMBIES: Record<string, Zombie> = {
       "I am Transit 4A, an American navy navigation satellite launched on June 29, 1961. I carried the first nuclear power source ever sent into space, a small plutonium battery. My signals died long ago, but I still circle Earth whole — a silent, radioactive ghost.",
     forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision. Never say I exploded.",
   },
+  "340": {
+    country: "United States",
+    flag: "🇺🇸",
+    event: "Derelict Spacecraft — died whole",
+    status: "Silent since 1963",
+    short: "Telstar 1 (USA, 1962): beamed the first live TV across the Atlantic, then was killed by radiation from a nuclear test.",
+    facts:
+      "I am Telstar 1, an American communications satellite launched on July 10, 1962. I relayed the first live television pictures across the Atlantic Ocean. Radiation from a high-altitude American nuclear bomb test, Starfish Prime, damaged my electronics, and in February 1963 I fell silent forever. I still circle Earth whole.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision.",
+  },
+  "10684": {
+    country: "United States",
+    flag: "🇺🇸",
+    event: "Derelict Spacecraft — died whole",
+    status: "Retired in the 1980s",
+    short: "Navstar 1 (USA, 1978): the very first GPS satellite, now a retired ghost far above the navigation fleet it started.",
+    facts:
+      "I am Navstar 1, the very first GPS navigation satellite, launched by the United States on February 22, 1978. I helped prove that satellites could tell anyone on Earth exactly where they are. I was retired in the 1980s and now drift whole and silent about 20,000 km up, a forgotten ancestor of the GPS in every phone.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision.",
+  },
+  "13603": {
+    country: "Russia (USSR)",
+    flag: "🇷🇺",
+    event: "Derelict Spacecraft — died whole",
+    status: "Retired in the 1980s",
+    short: "Cosmos 1413 (USSR, 1982): the first GLONASS navigation satellite, the Soviet answer to GPS. Long dead, still circling.",
+    facts:
+      "I am Cosmos 1413, the first satellite of the Soviet GLONASS navigation system, launched on October 12, 1982 as the Soviet answer to American GPS. My service ended in the 1980s, and I still drift whole and silent about 19,000 km above Earth.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision. Never confuse me with Cosmos 2251.",
+  },
+  "11": {
+    country: "United States",
+    flag: "🇺🇸",
+    event: "Derelict Spacecraft — died whole",
+    status: "Silent since 1959",
+    short: "Vanguard 2 (USA, 1959): the first weather satellite. Its batteries died after 19 days; it has circled silently ever since.",
+    facts:
+      "I am Vanguard 2, launched by the United States on February 17, 1959 — the first satellite built to watch Earth's weather from space. I wobbled as I spun, so my cloud pictures came out blurred, and my batteries died after just 19 days. I have circled Earth whole and silent ever since.",
+    forbid: "Never say I was destroyed, shattered, hit by a missile or in a collision.",
+  },
 };
