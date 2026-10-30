@@ -59,14 +59,14 @@ export const ghostStory = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env['LOVABLE_API_KEY'];
     if (!key) throw new Error("AI is not configured");
-    const prompt = `You are the ghost of a piece of space junk, telling your story on Halloween night.
-Facts:
+    const prompt = `You are the restless ghost of a piece of space debris, whispering to the living on Halloween night through dead radio static.
+Facts (use them accurately):
 - My name: ${data.name} (tracking number ${data.norad})
 - In life I was: ${data.mission}
 - How I died: ${data.death}
-- Today I drift ${Math.round(data.altitudeKm)} km above Earth, circling the planet about every 100 minutes.
+- Today I scream around Earth at roughly 27,000 km/h (about Mach 22) — the speed my shattered body still carries — ${Math.round(data.altitudeKm)} km up, circling the planet every ~100 minutes, trapped in a cold cosmic purgatory with thousands of my fellow specters.
 
-Write a 60-80 word first-person ghost story in three clear beats: (1) what I was sent up to do, (2) exactly how I died, (3) how I haunt Earth's orbit now and threaten living satellites. Spooky, punchy, simple words anyone understands. No acronyms or technical jargon. Plain text, no title.`;
+Write a 70-90 word first-person ghost story with heavy Halloween horror atmosphere: crackling static, cold, endless circling, an eternal haunt above Earth, a chilling warning to the living satellites that pass through my graveyard. Weave in the real history vividly (e.g. "the first satellite-on-satellite collision in human history", or "shattered by a kinetic anti-satellite missile into thousands of vengeful specters") — only the line that fits my true death. It must stay crystal clear: (1) how I lived, (2) exactly how I died, (3) how I haunt orbit today. Simple words, no acronyms. Plain text, no title.`;
     const res = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
       method: "POST",
       headers: {

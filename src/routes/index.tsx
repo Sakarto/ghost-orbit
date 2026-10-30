@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getDebris, ghostStory } from "@/lib/orbit.functions";
 import { buildGhosts, EVENTS, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
@@ -27,6 +28,7 @@ function Index() {
   const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<Ghost | null>(null);
   const [rotate, setRotate] = useState(true);
+  const [focus, setFocus] = useState<string | null>(null);
 
   useEffect(() => {
     getDebris()
@@ -52,12 +54,12 @@ function Index() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground">
       <Suspense fallback={null}>
-        <GhostGlobe ghosts={ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} />
+        <GhostGlobe ghosts={ghosts} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
       </Suspense>
 
       <header className="pointer-events-none absolute left-6 top-5 z-10">
         <h1 className="font-display text-4xl text-ghost drop-shadow-[0_0_12px_var(--ghost)] sm:text-5xl">Ghost Orbit</h1>
-        <p className="mt-2 font-pixel text-[10px] leading-relaxed text-spirit sm:text-xs">
+        <p className="mt-2 font-pixel text-xs leading-relaxed text-spirit sm:text-sm">
           Earth's orbit is haunted — and we're running out of{" "}
           <em className="text-ghost drop-shadow-[0_0_8px_var(--ghost)]">space</em>.
         </p>
@@ -71,7 +73,7 @@ function Index() {
       </button>
 
       <aside className="panel absolute bottom-5 left-5 z-10 w-72">
-        <h2 className="font-pixel text-[10px] uppercase text-spirit">Séance report</h2>
+        <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>
         ) : !ghosts.length ? (
@@ -84,20 +86,44 @@ function Index() {
             </p>
             <ul className="mt-3 space-y-1 text-xs">
               {Object.entries(stats.by).map(([k, v]) => (
-                <li key={k} className="flex justify-between gap-2" title={EVENTS[k]?.short}>
-                  <span className="cursor-help text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
-                  <span className="font-mono text-ghost">{v}</span>
+                <li key={k}>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={() => setFocus((f) => (f === k ? null : k))}
+                        className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
+                      >
+                        <span className="text-muted-foreground underline decoration-dotted underline-offset-2">{ORIGINS[k]}</span>
+                        <span className="font-mono text-ghost">{v}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" className="w-72 border-spirit/40 text-sm">
+                      <p className="font-pixel text-[10px] uppercase text-spirit">{ORIGINS[k]}</p>
+                      <p className="mt-2">{EVENTS[k]?.short}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{EVENTS[k]?.death}.</p>
+                      <p className="mt-2 text-xs text-ghost">
+                        {focus === k ? "Showing only these ghosts. Click again to show all." : "Click the name to highlight these ghosts."}
+                      </p>
+                    </PopoverContent>
+                  </Popover>
                 </li>
               ))}
             </ul>
             <div className="mt-4">
               <p className="text-xs">
-                <span className="font-pixel text-[9px] text-spirit">The Haunted Zone:</span>{" "}
+                <Popover>
+                  <PopoverTrigger className="cursor-help font-pixel text-[9px] text-spirit underline decoration-dotted underline-offset-4">
+                    The Haunted Zone ⓘ
+                  </PopoverTrigger>
+                  <PopoverContent side="right" className="w-72 border-spirit/40 text-sm">
+                    <p className="font-pixel text-[10px] uppercase text-spirit">The Haunted Zone</p>
+                    <p className="mt-2">
+                      {stats.haunted.start}–{stats.haunted.start + 100} km is the most crowded, dangerous altitude band —{" "}
+                      {Math.round((stats.haunted.count / ghosts.length) * 100)}% of these ghosts are trapped here, right where working satellites also fly.
+                    </p>
+                  </PopoverContent>
+                </Popover>{" "}
                 {stats.haunted.start}–{stats.haunted.start + 100} km ({stats.haunted.count})
-              </p>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                The most crowded, dangerous altitude band —{" "}
-                {Math.round((stats.haunted.count / ghosts.length) * 100)}% of these ghosts are trapped here, where working satellites also fly.
               </p>
               <div className="mt-2 flex h-20 items-end gap-px">
                 {stats.bins.map((b) => (
@@ -188,9 +214,6 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <dt className="text-muted-foreground">Altitude</dt><dd className="font-mono">{Math.round(ghost.alt)} km</dd>
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
-      <p className="mt-3 rounded-md border border-border bg-muted/40 p-2 text-xs leading-snug text-muted-foreground">
-        {EVENTS[ghost.source]?.short}
-      </p>
       <button
         onClick={hear}
         disabled={loading}

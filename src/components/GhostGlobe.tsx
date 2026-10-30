@@ -8,7 +8,9 @@ export default function GhostGlobe({
   selectedId,
   onSelect,
   rotate,
+  focusSource,
 }: {
+  focusSource: string | null;
   rotate: boolean;
   ghosts: Ghost[];
   selectedId: string | null;
@@ -20,6 +22,8 @@ export default function GhostGlobe({
   const cbRef = useRef(onSelect);
   cbRef.current = onSelect;
   selRef.current = selectedId;
+  const focusRef = useRef(focusSource);
+  focusRef.current = focusSource;
   const rotRef = useRef(rotate);
   const hoverRef = useRef(false);
   rotRef.current = rotate;
@@ -55,6 +59,7 @@ export default function GhostGlobe({
         return t;
       };
       const mat = new THREE.SpriteMaterial({ map: makeTex("#7dffb0"), transparent: true, depthWrite: false });
+      const dimMat = new THREE.SpriteMaterial({ map: makeTex("#7dffb0"), transparent: true, opacity: 0.12, depthWrite: false });
       const selMat = new THREE.SpriteMaterial({ map: makeTex("#c79bff"), transparent: true, depthWrite: false });
       // Large invisible hitbox so tiny ghosts are easy to click
       const hitGeo = new THREE.SphereGeometry(2.4, 6, 6);
@@ -72,8 +77,11 @@ export default function GhostGlobe({
         .objectFacesSurface(false)
         .objectThreeObject((d: Ghost) => {
           const sel = d.id === selRef.current;
-          const sp = new THREE.Sprite(sel ? selMat : mat);
-          sp.scale.setScalar(sel ? 7 : 4);
+          const f = focusRef.current;
+          const dim = !!f && d.source !== f && !sel;
+          const hot = !!f && d.source === f;
+          const sp = new THREE.Sprite(sel ? selMat : dim ? dimMat : mat);
+          sp.scale.setScalar(sel ? 7 : hot ? 5 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
@@ -109,7 +117,7 @@ export default function GhostGlobe({
 
   useEffect(() => {
     globe.current?.objectsData([...ghosts]);
-  }, [ghosts, selectedId]);
+  }, [ghosts, selectedId, focusSource]);
 
   return <div ref={el} className="absolute inset-0" />;
 }
