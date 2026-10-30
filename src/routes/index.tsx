@@ -325,7 +325,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
             <>
               <dt className="text-muted-foreground">Type</dt>
               <dd className={z ? "font-semibold text-[color:var(--zombie)]" : "font-semibold text-ghost"}>
-                {z ? "🧟 Intact Defunct Spacecraft" : "💥 Collision Fragment"}
+                {z ? "🧟 Intact Defunct Spacecraft" : ghost.source === "1999-025" ? "💥 Missile-Strike Fragment" : "💥 Collision Fragment"}
               </dd>
               <dt className="text-muted-foreground">Country</dt>
               <dd>{m?.flag} {m?.country}</dd>
