@@ -46,7 +46,7 @@ export function createGhostTransmission(audio: HTMLAudioElement): () => void {
   const reverb = c.createConvolver();
   const impulse = noiseBuffer(c, 1.8);
   const samples = impulse.getChannelData(0);
-  for (let i = 0; i < samples.length; i++) samples[i] *= (1 - i / samples.length) ** 3;
+  for (let i = 0; i < samples.length; i++) samples[i] = (samples[i] ?? 0) * (1 - i / samples.length) ** 3;
   reverb.buffer = impulse;
   const reverbMix = c.createGain();
   reverbMix.gain.value = 0.13;
