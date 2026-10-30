@@ -83,7 +83,7 @@ function Index() {
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
       </button>
 
-      <aside className="panel absolute bottom-5 left-5 z-10 max-h-[calc(100vh-8rem)] w-72 overflow-y-auto">
+      <aside className="panel absolute left-5 top-1/2 z-10 max-h-[calc(100vh-6rem)] w-72 -translate-y-1/2 overflow-y-auto">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>
