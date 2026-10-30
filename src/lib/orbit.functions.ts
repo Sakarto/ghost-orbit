@@ -11,7 +11,11 @@ const GROUPS = [
 ];
 const MAX_PER_GROUP = 600;
 
+// CelesTrak rate-limits repeat downloads, so keep each live copy for 2 hours.
+let cache: { at: number; data: { objects: RawTle[]; live: boolean } } | null = null;
+
 export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
+  if (cache && Date.now() - cache.at < 2 * 3600_000) return cache.data;
   const all: RawTle[] = [];
   let live = 0;
   for (const g of GROUPS) {
@@ -33,7 +37,9 @@ export const getDebris = createServerFn({ method: "GET" }).handler(async () => {
       all.push(...(fallback as RawTle[]).filter((f) => f.source === g.key));
     }
   }
-  return { objects: all, live: live === GROUPS.length };
+  const data = { objects: all, live: live === GROUPS.length };
+  if (data.live) cache = { at: Date.now(), data };
+  return data;
 });
 
 export const ghostStory = createServerFn({ method: "POST" })

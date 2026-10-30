@@ -73,7 +73,7 @@ export default function GhostGlobe({
         .objectThreeObject((d: Ghost) => {
           const sel = d.id === selRef.current;
           const sp = new THREE.Sprite(sel ? selMat : mat);
-          sp.scale.setScalar(sel ? 6 : 2.6);
+          sp.scale.setScalar(sel ? 7 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
