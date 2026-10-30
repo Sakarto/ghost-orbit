@@ -74,7 +74,8 @@ export default function GhostGlobe({
         .atmosphereAltitude(0.22)
         .objectLat("lat")
         .objectLng("lng")
-        .objectAltitude((d: Ghost) => d.alt / EARTH_R)
+        // High orbits (GPS ~20,000 km, geostationary ~36,000 km) are compressed so they stay on screen.
+        .objectAltitude((d: Ghost) => (d.alt <= 3000 ? d.alt : 3000 + Math.sqrt(d.alt - 3000) * 40) / EARTH_R)
         .objectFacesSurface(false)
         .objectThreeObject((d: Ghost) => {
           const sel = d.id === selRef.current;

@@ -3,19 +3,15 @@ import { z } from "zod";
 import { EVENT_META, ZOMBIES, type EventKey } from "@/lib/events";
 import fallback from "@/data/fallback-tle.json";
 
+export const VOICE_IDS = ["SAz9YHcvj6GT2YYXdXww", "CwhRBWXzGAHq8TQ4Fs17", "kPtEHAvRnjUJFv7SK9WI"] as const;
+
 export type RawTle = { name: string; l1: string; l2: string; source: string };
 
 const GROUPS = [
   { key: "cosmos-2251-debris", q: "GROUP=cosmos-2251-debris" },
   { key: "iridium-33-debris", q: "GROUP=iridium-33-debris" },
   { key: "1999-025", q: "INTDES=1999-025" },
-  { key: "derelict", q: "CATNR=5" },
-  { key: "derelict", q: "CATNR=27386" },
-  { key: "derelict", q: "CATNR=116" },
-  { key: "derelict", q: "CATNR=340" },
-  { key: "derelict", q: "CATNR=10684" },
-  { key: "derelict", q: "CATNR=13603" },
-  { key: "derelict", q: "CATNR=11" },
+  ...Object.keys(ZOMBIES).map((n) => ({ key: "derelict", q: `CATNR=${n}` })),
 ];
 const MAX_PER_GROUP = 600;
 
@@ -71,40 +67,46 @@ export const ghostStory = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const key = process.env['LOVABLE_API_KEY'];
-    if (!key) throw new Error("AI is not configured");
+    // Prefer the user's own Anthropic key when present; otherwise use the built-in AI gateway.
+    const anthropicKey = process.env["ANTHROPIC_API_KEY"];
+    const key = process.env["LOVABLE_API_KEY"];
+    if (!anthropicKey && !key) throw new Error("AI is not configured");
     const z0 = data.source === "derelict" ? ZOMBIES[String(Number(data.norad))] : undefined;
     const ev = z0 ?? EVENT_META[data.source as EventKey];
     if (!ev.facts) throw new Error("This ghost's history is unknown.");
-    const prompt = `You are the restless ghost of one fragment of space debris, speaking to the living on Halloween night.
+    const prompt = `You are a restless radio ghost, trapped between worlds in the cold void above Earth, speaking to the living on Halloween night.
 
 STRICT HISTORICAL FACTS — use only these, never invent or contradict them:
 ${ev.facts}
 ${ev.forbid}
 ${z0 ? "I am still in one piece, a whole dead spacecraft." : `I am fragment number ${data.norad} of that wreck.`} Today I race around Earth at about 27,000 km/h, ${Math.round(data.altitudeKm)} km up, circling every ~100 minutes, trapped in a cold cosmic purgatory among thousands of dead things, a threat to every living satellite that passes.
 
-Write a 70-90 word first-person ghost story. Heavy Halloween horror mood: cold, endless circling, an eternal haunt above Earth, a chilling warning to the living. Make it crystal clear (1) who I was in life, (2) exactly how I died, per the facts above, (3) how I haunt orbit today.
+Write a 70-90 word first-person ghost story. Heavy, spine-chilling Halloween horror: the freezing void, an eternity drifting alone in the dark above Earth, a voice trapped between worlds, a growing graveyard of the dead. End with a chilling warning to the living about the chain reaction scientists fear, where each crash makes more ghosts until the sky is a minefield (you may name it Kessler syndrome). Make it crystal clear (1) who I was in life, (2) exactly how I died, per the facts above, (3) how I haunt orbit today.
 
 This text is read aloud by a voice engine, so write ONLY natural spoken English sentences. Absolutely no sound effects or onomatopoeia (no "shhh", "ssshhk", "bzzt", "crackle", "hiss"), no asterisks or stage directions, no stretched letters, no ellipses chains, no emojis, no acronyms. Plain text, no title.`;
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-sonnet-5",
-        max_tokens: 1024,
-        stream: true,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    const body = JSON.stringify({
+      // claude-3-opus-20240229 has been retired by Anthropic, so use the current Opus alias.
+      model: anthropicKey ? "claude-opus-4-1" : "anthropic/claude-sonnet-5",
+      max_tokens: 1024,
+      stream: true,
+      messages: [{ role: "user", content: prompt }],
     });
+    const res = anthropicKey
+      ? await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+          body,
+        })
+      : await fetch("https://ai.gateway.lovable.dev/v1/messages", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" },
+          body,
+        });
     if (!res.ok || !res.body) {
-      const body = await res.text();
+      const errBody = await res.text();
       if (res.status === 429) throw new Error("The spirits are busy — try again in a moment.");
       if (res.status === 402) throw new Error("Out of AI credits. Add credits in workspace settings.");
-      throw new Error(`Story failed [${res.status}]: ${body.slice(0, 200)}`);
+      throw new Error(`Story failed [${res.status}]: ${errBody.slice(0, 200)}`);
     }
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -136,24 +138,26 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
       .replace(/(\w)\1{3,}/g, "$1")
       .replace(/\s{2,}/g, " ")
       .trim();
-    return { text: clean };
+    return { text: clean, model: anthropicKey ? "Claude Opus" : "Claude Sonnet" };
   });
 
 /** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
 export const ghostVoice = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ text: z.string().min(1).max(1500) }).parse(d))
+  .inputValidator((d) =>
+    z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default("SAz9YHcvj6GT2YYXdXww") }).parse(d),
+  )
   .handler(async ({ data }) => {
     const key = process.env["ELEVENLABS_API_KEY"];
     if (!key) return { audio: null as string | null, reason: "no-key" };
     const res = await fetch(
-      "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb?output_format=mp3_44100_128",
+      `https://api.elevenlabs.io/v1/text-to-speech/${data.voice}?output_format=mp3_44100_128`,
       {
         method: "POST",
         headers: { "xi-api-key": key, "Content-Type": "application/json" },
         body: JSON.stringify({
           text: data.text,
           model_id: "eleven_multilingual_v2",
-          voice_settings: { stability: 0.35, similarity_boost: 0.75, style: 0.6, use_speaker_boost: true, speed: 0.85 },
+          voice_settings: { stability: 0.28, similarity_boost: 0.75, style: 0.8, use_speaker_boost: true, speed: 0.85 },
         }),
       },
     );
