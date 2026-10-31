@@ -33,6 +33,7 @@ export default function GhostGlobe({
   const encounterRef = useRef(encounter);
   encounterRef.current = encounter;
   const updateEncounter = useRef<((moveCamera: boolean) => void) | null>(null);
+  const encounterScale = useRef(7);
   rotRef.current = rotate;
   useEffect(() => {
     if (globe.current) globe.current.controls().autoRotate = rotate && !hoverRef.current;
@@ -40,7 +41,10 @@ export default function GhostGlobe({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([import("globe.gl"), import("three")]).then(([{ default: Globe }, THREE]) => {
+    let frame = 0;
+    let disposeEncounter: (() => void) | undefined;
+    let removeResize: (() => void) | undefined;
+    Promise.all([import("globe.gl"), import("three"), import("three/addons/lines/Line2.js"), import("three/addons/lines/LineGeometry.js"), import("three/addons/lines/LineMaterial.js")]).then(([{ default: Globe }, THREE, { Line2 }, { LineGeometry }, { LineMaterial }]) => {
       const makeTex = (color: string) => {
         const c = document.createElement("canvas");
         c.width = c.height = 64;
@@ -100,7 +104,7 @@ export default function GhostGlobe({
           const near = encounterRef.current;
           const danger = d.id === near?.a.id || d.id === near?.b.id;
           const sp = new THREE.Sprite(danger ? dangerMat : sel ? selMat : dim ? dimMat : z ? zMat : mat);
-          sp.scale.setScalar(danger ? 7 : sel ? 7 : z ? 8 : hot ? 5 : 4);
+          sp.scale.setScalar(danger ? encounterScale.current : sel ? 7 : z ? 8 : hot ? 5 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
@@ -121,39 +125,87 @@ export default function GhostGlobe({
       g.controls().autoRotateSpeed = 0.25;
       g.pointOfView({ altitude: 2.6 });
       globe.current = g;
-      const lineGeometry = new THREE.BufferGeometry();
-      const lineMaterial = new THREE.LineBasicMaterial({ color: danger, depthTest: false, transparent: true, opacity: 0.95 });
-      const line = new THREE.Line(lineGeometry, lineMaterial);
-      line.visible = false;
-      line.renderOrder = 10;
-      g.scene().add(line);
+      const lineGeometry = new LineGeometry();
+      const lineMaterial = new LineMaterial({ color: danger, linewidth: 5, depthTest: false, depthWrite: false, transparent: true, opacity: 1 });
+      const glowMaterial = new LineMaterial({ color: danger, linewidth: 15, depthTest: false, depthWrite: false, transparent: true, opacity: 0.2 });
+      const line = new Line2(lineGeometry, lineMaterial);
+      const glow = new Line2(lineGeometry, glowMaterial);
+      line.visible = glow.visible = false;
+      line.renderOrder = 11;
+      glow.renderOrder = 10;
+      g.scene().add(glow, line);
+      disposeEncounter = () => { lineGeometry.dispose(); lineMaterial.dispose(); glowMaterial.dispose(); };
       updateEncounter.current = (moveCamera) => {
+        cancelAnimationFrame(frame);
         const near = encounterRef.current;
-        line.visible = !!near;
-        if (!near) return;
+        line.visible = glow.visible = !!near;
+        if (!near) {
+          g.controls().target.set(0, 0, 0);
+          g.controls().minDistance = 101;
+          encounterScale.current = 7;
+          if (moveCamera) g.pointOfView({ altitude: 2.6 }, 1000);
+          return;
+        }
         const points = [near.a.point, near.b.point].map(p => {
           const c = g.getCoords(p.lat, p.lng, displayAltitude(p.alt));
           return new THREE.Vector3(c.x, c.y, c.z);
         });
-        lineGeometry.setFromPoints(points);
+        lineGeometry.setPositions(points.flatMap(p => [p.x, p.y, p.z]));
+        const [first, second] = points;
+        if (!first || !second) return;
+        const separation = first.distanceTo(second);
+        encounterScale.current = Math.max(0.035, Math.min(0.6, separation * 0.22));
+        g.objectsData(ghosts.map(d => d.id === near.a.id ? { ...d, ...near.a.point } : d.id === near.b.id ? { ...d, ...near.b.point } : d));
         if (moveCamera) {
-          const [first, second] = points;
-          if (!first || !second) return;
           const middle = first.clone().add(second).multiplyScalar(0.5);
-          const location = g.toGeoCoords(middle);
-          g.pointOfView({ lat: location.lat, lng: location.lng, altitude: Math.max(2, displayAltitude(Math.max(near.a.point.alt, near.b.point.alt)) + 1.5) }, 1200);
+          const axis = second.clone().sub(first).normalize();
+          const outward = middle.clone().normalize();
+          let direction = outward.clone().addScaledVector(axis, -outward.dot(axis));
+          if (direction.lengthSq() < 0.01) direction = new THREE.Vector3(0, 1, 0).cross(axis);
+          if (direction.lengthSq() < 0.01) direction = new THREE.Vector3(1, 0, 0).cross(axis);
+          direction.normalize();
+          const distance = Math.max(0.5, separation * 3.5);
+          const destination = middle.clone().addScaledVector(direction, distance);
+          const camera = g.camera();
+          const controls = g.controls();
+          controls.minDistance = 0.1;
+          const initialPosition = camera.position.clone();
+          const initialTarget = controls.target.clone();
+          const started = performance.now();
+          const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const animate = () => {
+            if (cancelled) return;
+            const progress = reducedMotion ? 1 : Math.min(1, (performance.now() - started) / 1200);
+            const eased = progress * progress * (3 - 2 * progress);
+            camera.position.lerpVectors(initialPosition, destination, eased);
+            controls.target.lerpVectors(initialTarget, middle, eased);
+            controls.update();
+            if (progress < 1) frame = requestAnimationFrame(animate);
+          };
+          animate();
+          el.current?.setAttribute("data-encounter-camera-distance", String(distance));
         }
         el.current?.setAttribute("data-encounter-preview", near.key);
       };
       g.objectsData(ghosts);
       updateEncounter.current(true);
-      const resize = () => g.width(el.current?.clientWidth ?? 0).height(el.current?.clientHeight ?? 0);
+      const resize = () => {
+        const width = el.current?.clientWidth ?? 0;
+        const height = el.current?.clientHeight ?? 0;
+        g.width(width).height(height);
+        lineMaterial.resolution.set(width, height);
+        glowMaterial.resolution.set(width, height);
+      };
       resize();
       window.addEventListener("resize", resize);
+      removeResize = () => window.removeEventListener("resize", resize);
       el.current.setAttribute("data-scene-ready", "true");
     });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frame);
+      removeResize?.();
+      disposeEncounter?.();
       globe.current?._destructor?.();
       updateEncounter.current = null;
     };
@@ -172,5 +224,5 @@ export default function GhostGlobe({
     if (!encounter) el.current?.removeAttribute("data-encounter-preview");
   }, [encounter]);
 
-  return <div ref={el} className="absolute inset-y-0 right-0 left-0 md:left-[19.25rem]" />;
+  return <div ref={el} className="absolute inset-0" />;
 }

@@ -86,7 +86,8 @@ function Index() {
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
       </button>
 
-      <aside className="panel absolute bottom-20 left-5 top-40 z-10 w-72 overflow-y-auto md:bottom-auto md:top-1/2 md:max-h-[calc(100dvh-12rem)] md:-translate-y-1/2">
+      <div className="pointer-events-none absolute inset-x-5 bottom-20 top-40 z-10 flex flex-col gap-4 overflow-y-auto md:flex-row md:items-center md:justify-between md:overflow-hidden">
+      <aside className="panel pointer-events-auto w-72 shrink-0 overflow-y-auto md:max-h-full">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>
@@ -240,13 +241,16 @@ function Index() {
                 <span>{(stats.bins.at(-1)?.start ?? 0) + 100} km</span>
               </div>
             </div>
-            <NearMissPanel ghosts={scanGhosts} selected={encounter} onSelect={(next) => {
-              setEncounter(next);
-              if (next) { setSel(null); setCat("all"); setFocus(null); setRotate(false); }
-            }} />
           </>
         )}
       </aside>
+      <aside className="panel pointer-events-auto w-72 shrink-0 overflow-y-auto md:max-h-full" aria-label="Near misses panel">
+        <NearMissPanel ghosts={scanGhosts} selected={encounter} onSelect={(next) => {
+          setEncounter(next);
+          if (next) { setSel(null); setCat("all"); setFocus(null); setRotate(false); }
+        }} />
+      </aside>
+      </div>
 
       {sel && <GhostPanel key={sel.id} ghost={sel} onClose={() => setSel(null)} />}
     </main>

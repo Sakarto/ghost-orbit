@@ -52,7 +52,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
   }, [ghosts, revision]);
 
   return (
-    <section className="mt-4 border-t border-border pt-4" aria-label="Near-miss detector">
+    <section aria-label="Near-miss detector">
       <div className="flex items-center justify-between gap-1">
         <h3 className="font-pixel text-[9px] leading-relaxed text-destructive">⚠️ Near Misses — Next Hour</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground" aria-label="Rescan orbits" title="Rescan orbits" disabled={scanning || !ghosts.length} onClick={() => { onSelect(null); setRevision(r => r + 1); }}>

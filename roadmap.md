@@ -1,4 +1,6 @@
 # Roadmap
+- [ ] Separate left radar and right near-misses below heading; center globe
+- [ ] Tight encounter framing and thick glowing connector; verify desktop and small screens
 - [x] Make intact satellite list readable and scrollable without clipping; constrain details scrolling
 - [x] Compute next-hour closest approaches in a Web Worker and test numerical rules
 - [x] Add clickable Near Misses panel with red encounter preview and verify in the globe
