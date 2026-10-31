@@ -217,6 +217,7 @@ export default function GhostGlobe({
             camera.position.lerpVectors(s.from, s.to, f);
             controls.target.lerpVectors(s.targetFrom, s.targetTo, f);
             camera.lookAt(controls.target);
+            el.current?.setAttribute("data-encounter-anim", `${seg}:${camera.position.length().toFixed(1)}`);
             if (elapsed < total) frame = requestAnimationFrame(animate);
           };
           animate();
