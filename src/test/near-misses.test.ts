@@ -70,10 +70,28 @@ it("ranks encounters from soonest to latest so expired ones drop off first", () 
     const step = Math.round(((date as Date).getTime() - start) / 60000);
     return { position: { x: 7000 + n * n - step * n, y: 0, z: 0 }, velocity: { x: 0, y: 7, z: 0 } };
   });
-  const result = scanNearMisses(input, start);
+  const result = scanNearMisses(input, start, start);
   const times = result.encounters.map(e => (e.at - start) / 60000);
   expect(times).toEqual([1, 2, 3, 3, 4]);
   expect([...times].sort((a, b) => a - b)).toEqual(times);
+  spy.mockRestore();
+});
+
+it("orders same-minute encounters closest-first, matching the displayed labels", () => {
+  const record = sat.twoline2satrec(fixture.l1, fixture.l2);
+  const input = Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Ghost ${i}`, satrec: { ...record, satnum: String(i) } }));
+  const start = Date.UTC(2026, 9, 31);
+  // Pair (0,1) bottoms out at step 1 with 14.7 km; pair (2,3) at step 2 with 7.2 km.
+  const spy = vi.spyOn(sat, "propagate").mockImplementation((rec, date) => {
+    const n = Number(rec.satnum);
+    const step = Math.round(((date as Date).getTime() - start) / 60000);
+    // Tangential separation keeps both ghosts of a pair at the same altitude.
+    const gap = n < 2 ? 14.7 + Math.abs(step - 1) * 100 : 7.2 + Math.abs(step - 2) * 100;
+    return { position: { x: n < 2 ? 7000 : 20000, y: (n % 2) * gap, z: 0 }, velocity: { x: 0, y: 7, z: 0 } };
+  });
+  // 100 s after start, steps 1 and 2 both display as "now"; the closer pair must lead.
+  const result = scanNearMisses(input, start, start + 100000);
+  expect(result.encounters.map(e => e.distanceKm)).toEqual([7.2, 14.7]);
   spy.mockRestore();
 });
 
