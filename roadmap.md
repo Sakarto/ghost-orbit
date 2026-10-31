@@ -22,5 +22,4 @@
 - [x] Glitch voice is blocked on the current ElevenLabs plan: default to a working voice
 - [x] Near-miss flight: zoom out, travel at wide view, then dive in
 - [x] Near-miss flight path orbits Earth, never cutting through the globe (min camera radius 114.6 vs surface 100)
-- [x] Near-miss list sorted soonest-first; expired encounters drop off and rescan refills from the bottom
-- [x] Same-time encounters tie-break by closest distance (verified live: 25.9 km above 198.7 km, all "now")
+- [x] Near-miss list sorted closest-distance first, tie-break by soonest time; expired encounters drop off and rescan refills from the bottom
