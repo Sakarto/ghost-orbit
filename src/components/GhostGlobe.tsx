@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { Vector3 } from "three";
 import type { Ghost } from "@/lib/debris";
 import type { NearMiss } from "@/lib/near-misses";
 
@@ -195,7 +196,7 @@ export default function GhostGlobe({
           const center = new THREE.Vector3(0, 0, 0);
           // Spherical interpolation between two directions, so the camera
           // sweeps along the sphere's surface instead of a chord through it.
-          const slerpDir = (a: THREE.Vector3, b: THREE.Vector3, t: number, out: THREE.Vector3) => {
+          const slerpDir = (a: Vector3, b: Vector3, t: number, out: Vector3) => {
             const dot = Math.min(1, Math.max(-1, a.dot(b)));
             const angle = Math.acos(dot);
             if (angle < 1e-4) return out.copy(a);
