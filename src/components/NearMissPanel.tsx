@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { encounterTime, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
+import { encounterTime, MAX_NEAR_MISSES, SCAN_STEP_SECONDS, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
 
 export function NearMissPanel({ ghosts, selected, onSelect }: {
   ghosts: ScanGhost[]; selected: NearMiss | null; onSelect: (encounter: NearMiss | null) => void;
@@ -11,6 +11,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [now, setNow] = useState(0);
+  const lastScanRef = useRef(0);
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(clock);
@@ -25,6 +26,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
       const scan = () => {
         if (busy) return;
         busy = true;
+        lastScanRef.current = Date.now();
         setScanning(true);
         setError(null);
         worker.postMessage({ ghosts, startedAt: Date.now() });
@@ -51,6 +53,23 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
     return () => { worker?.terminate(); if (timer) clearInterval(timer); };
   }, [ghosts, revision]);
 
+  // Encounters whose moment has passed (beyond one scan step of grace) drop off; the list shifts up.
+  const graceMs = SCAN_STEP_SECONDS * 1000;
+  const encounters = result?.encounters.filter(e => !now || e.at >= now - graceMs) ?? [];
+
+  // Refill from the bottom once expired encounters leave gaps.
+  useEffect(() => {
+    if (!now || !result || scanning || !ghosts.length) return;
+    if (encounters.length >= MAX_NEAR_MISSES) return;
+    if (Date.now() - lastScanRef.current < 55000) return;
+    setRevision(r => r + 1);
+  }, [encounters.length, result, scanning, ghosts.length, now]);
+
+  // A previewed encounter that has already happened is cleared too.
+  useEffect(() => {
+    if (selected && now && selected.at < now - graceMs) onSelect(null);
+  }, [selected, now, onSelect, graceMs]);
+
   return (
     <section aria-label="Near-miss detector">
       <div className="flex items-center justify-between gap-1">
@@ -64,9 +83,9 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
         {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
       {result && !error && <>
-        <p className="mt-1 text-[10px] text-muted-foreground">Closest sampled pairs · {result.scannedCount.toLocaleString()} ghosts scanned</p>
+        <p className="mt-1 text-[10px] text-muted-foreground">Soonest sampled pairs · {result.scannedCount.toLocaleString()} ghosts scanned</p>
         <ol className="mt-2 divide-y divide-border">
-          {result.encounters.map(encounter => (
+          {encounters.map(encounter => (
             <li key={encounter.key}>
               <Button variant="ghost" aria-pressed={selected?.key === encounter.key} onClick={() => onSelect(encounter)}
                 className={`h-auto w-full justify-start whitespace-normal rounded-sm px-1 py-2 text-left hover:bg-destructive/10 hover:text-destructive ${selected?.key === encounter.key ? "bg-destructive/10 text-destructive" : "text-foreground"}`}>
@@ -79,7 +98,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
             </li>
           ))}
         </ol>
-        {!result.encounters.length && <p className="mt-2 text-xs text-muted-foreground">No eligible pairs in this scan.</p>}
+        {!encounters.length && <p className="mt-2 text-xs text-muted-foreground">No upcoming pairs in this scan.</p>}
       </>}
       {selected && <div className="mt-2 flex items-start justify-between gap-1 text-[10px] text-destructive">
         <span>Encounter preview · {new Date(selected.at).toISOString().slice(11, 19)} UTC</span>

@@ -74,7 +74,7 @@ export function scanNearMisses(input: ScanGhost[], startedAt: number): ScanResul
     collectApproaches(samples, at, minima);
   }
   return { startedAt, scannedCount: propagated.size,
-    encounters: [...minima.values()].sort((a, b) => a.distanceKm - b.distanceKm || a.key.localeCompare(b.key)).slice(0, MAX_NEAR_MISSES) };
+    encounters: [...minima.values()].sort((a, b) => a.at - b.at || a.distanceKm - b.distanceKm || a.key.localeCompare(b.key)).slice(0, MAX_NEAR_MISSES) };
 }
 
 export function encounterTime(at: number, now: number) {
