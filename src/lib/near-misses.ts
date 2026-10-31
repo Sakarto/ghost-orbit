@@ -48,7 +48,7 @@ export function collectApproaches(samples: OrbitSample[], at: number, minima: Ma
   }
 }
 
-export function scanNearMisses(input: ScanGhost[], startedAt: number): ScanResult {
+export function scanNearMisses(input: ScanGhost[], startedAt: number, now = Date.now()): ScanResult {
   // SGP4 mutates satellite records: do not share these records with live telemetry.
   const ghosts = [...new Map(input.map(g => [g.id, { ...g, satrec: { ...g.satrec } }])).values()];
   const minima = new Map<string, NearMiss>();
@@ -73,8 +73,10 @@ export function scanNearMisses(input: ScanGhost[], startedAt: number): ScanResul
     }
     collectApproaches(samples, at, minima);
   }
+  // Rank by the minute the panel will display, then closest distance within that minute.
+  const minuteBucket = (at: number) => Math.max(0, Math.round((at - now) / (SCAN_STEP_SECONDS * 1000)));
   return { startedAt, scannedCount: propagated.size,
-    encounters: [...minima.values()].sort((a, b) => a.at - b.at || a.distanceKm - b.distanceKm || a.key.localeCompare(b.key)).slice(0, MAX_NEAR_MISSES) };
+    encounters: [...minima.values()].sort((a, b) => minuteBucket(a.at) - minuteBucket(b.at) || a.distanceKm - b.distanceKm || a.key.localeCompare(b.key)).slice(0, MAX_NEAR_MISSES) };
 }
 
 export function encounterTime(at: number, now: number) {
