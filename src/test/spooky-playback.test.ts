@@ -22,7 +22,7 @@ describe("gesture-unlocked buffer playback", () => {
 
   it("decodes returned MP3 bytes directly without creating an HTML audio element", async () => {
     const buffer = { length: 48000 };
-    const decode = vi.fn(async () => buffer);
+    const decode = vi.fn(async (_bytes: ArrayBuffer) => buffer);
     vi.stubGlobal("AudioContext", class { decodeAudioData = decode; });
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array([73, 68, 51]))));
     const audio = vi.fn();

@@ -31,6 +31,7 @@ describe("haunted radio processing", () => {
     expect(nodes[0].buffer).toBe(buffer);
     expect(nodes[0].playbackRate.value).toBe(0.86);
     expect(nodes[0].start).toHaveBeenCalledOnce();
+    expect(nodes.find((n) => n.gain.value === 1.35)?.connect).toHaveBeenCalled();
     expect(nodes.find((n) => n.type === "highpass")?.frequency.value).toBe(350);
     expect(nodes.filter((n) => n.type === "lowpass").map((n) => n.frequency.value)).toEqual([3200, 1800]);
     expect(nodes.find((n) => n.delayTime.value > 0)?.delayTime.value).toBe(0.18);
