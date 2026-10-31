@@ -68,7 +68,7 @@ function Index() {
         <GhostGlobe ghosts={visible} selectedId={sel?.id ?? null} onSelect={(g) => { setEncounter(null); setSel(g); }} rotate={rotate} focusSource={focus} encounter={encounter} />
       </Suspense>
 
-      <header className="pointer-events-none absolute left-6 top-5 z-10">
+      <header className="pointer-events-none absolute left-6 top-5 z-10 max-w-[calc(100vw-3rem)]">
         <h1 className="font-display text-4xl text-ghost drop-shadow-[0_0_12px_var(--ghost)] sm:text-5xl">Ghost Orbit</h1>
         <p className="mt-2 font-pixel text-xs leading-relaxed text-spirit sm:text-sm">
           Earth's orbit is haunted — and we're running out of{" "}
@@ -86,7 +86,7 @@ function Index() {
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
       </button>
 
-      <aside className="panel absolute left-5 top-1/2 z-10 max-h-[calc(100dvh-12rem)] w-72 -translate-y-1/2 overflow-y-auto">
+      <aside className="panel absolute bottom-20 left-5 top-40 z-10 w-72 overflow-y-auto md:bottom-auto md:top-1/2 md:max-h-[calc(100dvh-12rem)] md:-translate-y-1/2">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>

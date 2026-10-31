@@ -69,7 +69,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
           {result.encounters.map(encounter => (
             <li key={encounter.key}>
               <Button variant="ghost" aria-pressed={selected?.key === encounter.key} onClick={() => onSelect(encounter)}
-                className={`h-auto w-full justify-start whitespace-normal rounded-sm px-1 py-2 text-left ${selected?.key === encounter.key ? "bg-destructive/10 text-destructive" : "text-foreground"}`}>
+                className={`h-auto w-full justify-start whitespace-normal rounded-sm px-1 py-2 text-left hover:bg-destructive/10 hover:text-destructive ${selected?.key === encounter.key ? "bg-destructive/10 text-destructive" : "text-foreground"}`}>
                 <span className="min-w-0">
                   <span className="block break-words text-[11px] leading-snug">{encounter.a.name} ↔ {encounter.b.name}</span>
                   <span className="mt-1 block font-mono text-[10px] text-destructive">{encounter.distanceKm.toFixed(2)} km · {encounterTime(encounter.at, now)} · {encounter.relativeSpeedKmS.toFixed(1)} km/s</span>
@@ -86,6 +86,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
         <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" aria-label="Clear encounter preview" title="Clear encounter preview" onClick={() => onSelect(null)}><X /></Button>
       </div>}
       <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Computed with SGP4 orbit propagation at 60-second resolution.</p>
+      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Pairs screened within 10 km of altitude.</p>
       <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Sampled estimates, not collision alerts. Actual closest passes may occur between samples; accuracy depends on orbital record age.</p>
     </section>
   );

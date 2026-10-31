@@ -100,7 +100,7 @@ export default function GhostGlobe({
           const near = encounterRef.current;
           const danger = d.id === near?.a.id || d.id === near?.b.id;
           const sp = new THREE.Sprite(danger ? dangerMat : sel ? selMat : dim ? dimMat : z ? zMat : mat);
-          sp.scale.setScalar(danger ? 11 : sel ? 7 : z ? 8 : hot ? 5 : 4);
+          sp.scale.setScalar(danger ? 7 : sel ? 7 : z ? 8 : hot ? 5 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
@@ -141,7 +141,7 @@ export default function GhostGlobe({
           if (!first || !second) return;
           const middle = first.clone().add(second).multiplyScalar(0.5);
           const location = g.toGeoCoords(middle);
-          g.pointOfView({ lat: location.lat, lng: location.lng, altitude: Math.max(1.1, displayAltitude(Math.max(near.a.point.alt, near.b.point.alt)) + 0.8) }, 1200);
+          g.pointOfView({ lat: location.lat, lng: location.lng, altitude: Math.max(2, displayAltitude(Math.max(near.a.point.alt, near.b.point.alt)) + 1.5) }, 1200);
         }
         el.current?.setAttribute("data-encounter-preview", near.key);
       };
