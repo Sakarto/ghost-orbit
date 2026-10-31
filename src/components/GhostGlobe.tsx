@@ -182,18 +182,42 @@ export default function GhostGlobe({
           // A close encounter must look at the pair, not through it at the surface.
           controls.enabled = false;
           controls.minDistance = 0.1;
-          const initialPosition = camera.position.clone();
-          const initialTarget = controls.target.clone();
-          const started = performance.now();
+          // Cinematic approach: pull back to a wide view, fly over the globe to
+          // the encounter region, then dive in to the tight pair framing.
+          const start = camera.position.clone();
+          const startTarget = controls.target.clone();
+          const wide = Math.max(start.length(), 320);
+          const wideStart = start.clone().normalize().multiplyScalar(wide);
+          const widePair = middle.clone().normalize().multiplyScalar(wide);
+          const center = new THREE.Vector3(0, 0, 0);
+          const segments = [
+            { from: start, to: wideStart, targetFrom: startTarget, targetTo: center },
+            { from: wideStart, to: widePair, targetFrom: center, targetTo: center },
+            { from: widePair, to: destination, targetFrom: center, targetTo: middle },
+          ];
+          const phaseMs = [700, 900, 900];
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const started = performance.now();
+          const ease = (f: number) => f * f * (3 - 2 * f);
           const animate = () => {
             if (cancelled) return;
-            const progress = reducedMotion ? 1 : Math.min(1, (performance.now() - started) / 1200);
-            const eased = progress * progress * (3 - 2 * progress);
-            camera.position.lerpVectors(initialPosition, destination, eased);
-            controls.target.lerpVectors(initialTarget, middle, eased);
+            const elapsed = performance.now() - started;
+            if (reducedMotion) {
+              camera.position.copy(destination);
+              controls.target.copy(middle);
+              camera.lookAt(controls.target);
+              return;
+            }
+            const total = phaseMs[0] + phaseMs[1] + phaseMs[2];
+            let remaining = Math.min(elapsed, total);
+            let seg = 0;
+            while (seg < 2 && remaining > phaseMs[seg]) { remaining -= phaseMs[seg]; seg++; }
+            const s = segments[seg];
+            const f = ease(Math.min(1, remaining / phaseMs[seg]));
+            camera.position.lerpVectors(s.from, s.to, f);
+            controls.target.lerpVectors(s.targetFrom, s.targetTo, f);
             camera.lookAt(controls.target);
-            if (progress < 1) frame = requestAnimationFrame(animate);
+            if (elapsed < total) frame = requestAnimationFrame(animate);
           };
           animate();
           el.current?.setAttribute("data-encounter-camera-distance", String(distance));
