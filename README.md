@@ -5,8 +5,7 @@ Ghost Orbit is an interactive 3D globe that shows real space debris as ghosts, a
 
 Built solo at **LancerHacks 2026** (Pasadena City College), theme: *Space*.
 
-🔗 **Live demo:** [PASTE LIVE URL]
-🎥 **Video:** [PASTE VIDEO URL]
+🔗 **Live demo:** https://ghost-orbit-lancerhacks.lovable.app
 
 ## Features
 - **1,300+ real orbital objects** from the 2009 Cosmos–Iridium collision, the 2007 Fengyun-1C anti-satellite test, and intact "zombie" satellites like Vanguard 1 and Telstar 1
