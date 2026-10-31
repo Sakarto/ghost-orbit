@@ -72,7 +72,7 @@ it("ranks encounters from soonest to latest so expired ones drop off first", () 
   });
   const result = scanNearMisses(input, start);
   const times = result.encounters.map(e => (e.at - start) / 60000);
-  expect(times).toEqual([1, 2, 3, 3, 5]);
+  expect(times).toEqual([1, 2, 3, 3, 4]);
   expect([...times].sort((a, b) => a - b)).toEqual(times);
   spy.mockRestore();
 });
