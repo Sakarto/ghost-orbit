@@ -80,7 +80,13 @@ function Index() {
       </p>
 
       <button
-        onClick={() => setRotate((r) => !r)}
+        onClick={() => {
+          if (!rotate) {
+            setEncounter(null);
+            setGhosts(propagateAll(all.current, new Date()));
+          }
+          setRotate((r) => !r);
+        }}
         className="panel absolute bottom-5 right-5 z-10 !px-3 !py-2 font-pixel text-[9px] uppercase text-ghost hover:text-spirit"
       >
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
