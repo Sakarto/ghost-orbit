@@ -79,8 +79,15 @@ export default function GhostGlobe({
       const dangerColor = getComputedStyle(document.documentElement).getPropertyValue("--destructive").trim();
       // Canvas/Three require a resolved sRGB color, rather than an OKLCH CSS token.
       const resolver = document.createElement("canvas").getContext("2d");
-      if (resolver) resolver.fillStyle = dangerColor;
-      const danger = resolver ? String(resolver.fillStyle) : dangerColor;
+      const resolveColor = (token: string) => {
+        if (!resolver) return token;
+        resolver.clearRect(0, 0, 1, 1);
+        resolver.fillStyle = token;
+        resolver.fillRect(0, 0, 1, 1);
+        const pixel = resolver.getImageData(0, 0, 1, 1).data;
+        return `#${Array.from(pixel.slice(0, 3)).map(c => c.toString(16).padStart(2, "0")).join("")}`;
+      };
+      const danger = resolveColor(dangerColor);
       const dangerMat = new THREE.SpriteMaterial({ map: makeTex(danger), transparent: true, depthWrite: false });
       // Large invisible hitbox so tiny ghosts are easy to click
       const hitGeo = new THREE.SphereGeometry(2.4, 6, 6);
@@ -120,8 +127,7 @@ export default function GhostGlobe({
           if (el.current) el.current.style.cursor = d ? "pointer" : "grab";
         });
       const gm = g.globeMaterial();
-      if (resolver) resolver.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--earth-surface").trim();
-      gm.color = new THREE.Color(resolver ? String(resolver.fillStyle) : danger);
+      gm.color = new THREE.Color(resolveColor(getComputedStyle(document.documentElement).getPropertyValue("--earth-surface").trim()));
       gm.emissive = new THREE.Color("#1a0d33");
       gm.emissiveIntensity = 0.35;
       g.controls().autoRotate = true;
@@ -159,7 +165,7 @@ export default function GhostGlobe({
         if (!first || !second) return;
         const separation = first.distanceTo(second);
         encounterScale.current = Math.max(0.035, Math.min(0.6, separation * 0.22));
-        g.objectsData(ghostsRef.current.map(d => d.id === near.a.id ? { ...d, ...near.a.point } : d.id === near.b.id ? { ...d, ...near.b.point } : d));
+        g.objectsData(ghostsRef.current.filter(d => d.id === near.a.id || d.id === near.b.id).map(d => d.id === near.a.id ? { ...d, ...near.a.point } : { ...d, ...near.b.point }));
         if (moveCamera) {
           const middle = first.clone().add(second).multiplyScalar(0.5);
           const axis = second.clone().sub(first).normalize();
@@ -222,7 +228,7 @@ export default function GhostGlobe({
   useEffect(() => {
     const near = encounterRef.current;
     // Keep the pair at its predicted encounter epoch, not at today's live coordinates.
-    const preview = ghosts.map(g => g.id === near?.a.id ? { ...g, ...near.a.point } : g.id === near?.b.id ? { ...g, ...near.b.point } : g);
+    const preview = near ? ghosts.filter(g => g.id === near.a.id || g.id === near.b.id).map(g => g.id === near.a.id ? { ...g, ...near.a.point } : { ...g, ...near.b.point }) : ghosts;
     globe.current?.objectsData(preview);
   }, [ghosts, selectedId, focusSource, encounter]);
 
