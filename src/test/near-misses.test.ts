@@ -49,7 +49,7 @@ it("scans 61 samples at 60 seconds including now and the hour endpoint", () => {
   spy.mockRestore();
 });
 
-it("returns the top five unique pairs ranked by sampled distance", () => {
+it("returns the top five unique pairs, breaking time ties by sampled distance", () => {
   const record = sat.twoline2satrec(fixture.l1, fixture.l2);
   const input = Array.from({ length: 7 }, (_, i) => ({ id: String(i), name: `Ghost ${i}`, satrec: { ...record, satnum: String(i) } }));
   const spy = vi.spyOn(sat, "propagate").mockImplementation(rec => ({ position: { x: 7000 + Number(rec.satnum) ** 2, y: 0, z: 0 }, velocity: { x: 0, y: 7, z: 0 } }));
@@ -57,6 +57,23 @@ it("returns the top five unique pairs ranked by sampled distance", () => {
   expect(result.encounters).toHaveLength(5);
   expect(result.encounters.map(e => e.distanceKm)).toEqual([1, 3, 4, 5, 7]);
   expect(new Set(result.encounters.map(e => e.key)).size).toBe(5);
+  spy.mockRestore();
+});
+
+it("ranks encounters from soonest to latest so expired ones drop off first", () => {
+  const record = sat.twoline2satrec(fixture.l1, fixture.l2);
+  const input = Array.from({ length: 7 }, (_, i) => ({ id: String(i), name: `Ghost ${i}`, satrec: { ...record, satnum: String(i) } }));
+  const start = Date.UTC(2026, 9, 31);
+  // Pair (i, j) distance is |i-j| * |i+j-step|, so each pair's minimum lands at step i+j.
+  const spy = vi.spyOn(sat, "propagate").mockImplementation((rec, date) => {
+    const n = Number(rec.satnum);
+    const step = Math.round(((date as Date).getTime() - start) / 60000);
+    return { position: { x: 7000 + n * n - step * n, y: 0, z: 0 }, velocity: { x: 0, y: 7, z: 0 } };
+  });
+  const result = scanNearMisses(input, start);
+  const times = result.encounters.map(e => (e.at - start) / 60000);
+  expect(times).toEqual([1, 2, 3, 3, 5]);
+  expect([...times].sort((a, b) => a - b)).toEqual(times);
   spy.mockRestore();
 });
 
