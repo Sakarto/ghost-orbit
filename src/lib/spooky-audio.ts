@@ -13,18 +13,35 @@ function ac() {
 export async function unlockSpookyAudio() {
   const c = ac();
   if (!c) throw new Error("Audio processing is unavailable.");
-  if (c.state === "suspended") await c.resume();
-  if (c.state !== "running") throw new Error("George's audio is blocked. Tap Hear it again to enable sound.");
+  // Both resume and a silent source start happen on the original tap, before any await.
+  const resumed = c.state === "running" ? Promise.resolve() : c.resume();
+  const prime = c.createBufferSource();
+  prime.buffer = c.createBuffer(1, 1, c.sampleRate);
+  prime.connect(c.destination);
+  prime.onended = () => prime.disconnect();
+  prime.start();
+  await resumed;
+  if (c.state !== "running") throw new DOMException("Tap Play George's transmission to enable sound.", "NotAllowedError");
+}
+
+/** Decode once; cached buffers replay without a network request or a media element. */
+export async function decodeGhostTransmission(src: string): Promise<AudioBuffer> {
+  const c = ac();
+  if (!c) throw new Error("Audio processing is unavailable.");
+  const response = await fetch(src);
+  if (!response.ok) throw new Error("George's recording could not be loaded.");
+  return c.decodeAudioData(await response.arrayBuffer());
 }
 
 /** No clean audio bypass: every voice passes through the haunted radio graph. */
-export function createGhostTransmission(audio: HTMLAudioElement): () => void {
+export function createGhostTransmission(buffer: AudioBuffer, onEnded: () => void = () => {}): () => void {
   const c = ac();
   if (!c) throw new Error("Audio processing is unavailable");
-  // Browsers preserve pitch by default; turn that off so slower playback also deepens the voice.
-  audio.preservesPitch = false;
-  audio.playbackRate = GHOST_PLAYBACK_RATE;
-  const source = c.createMediaElementSource(audio);
+  if (c.state !== "running") throw new DOMException("Tap Play George's transmission to enable sound.", "NotAllowedError");
+  // Buffer-source rate naturally lowers pitch as well; no HTML media autoplay token is needed.
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = GHOST_PLAYBACK_RATE;
   const highpass = c.createBiquadFilter();
   highpass.type = "highpass";
   highpass.frequency.value = 350;
@@ -66,14 +83,23 @@ export function createGhostTransmission(audio: HTMLAudioElement): () => void {
   output.connect(c.destination);
   lfo.start();
   let stopped = false;
-  return () => {
+  const stop = () => {
     if (stopped) return;
     stopped = true;
-    audio.pause();
+    source.onended = null;
+    source.stop();
     lfo.stop();
     [source, highpass, lowpass, tremolo, lfo, depth, delay, dampening, feedback, echoMix, reverb, reverbMix, output]
       .forEach((node) => node.disconnect());
   };
+  source.onended = () => { stop(); onEnded(); };
+  try {
+    source.start();
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return stop;
 }
 
 function noiseBuffer(c: AudioContext, seconds: number) {

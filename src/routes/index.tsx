@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
+import { createGhostTransmission, decodeGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
+import { Button } from "@/components/ui/button";
+import { Play } from "lucide-react";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { GHOST_VOICES as VOICES } from "@/lib/ghost-voice-config";
 import { requireGhostAudio } from "@/lib/ghost-response";
@@ -270,11 +272,12 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopTransmission = useRef<(() => void) | null>(null);
   const playbackId = useRef(0);
   const mounted = useRef(true);
   const voiceCache = useRef<Record<string, string>>({});
+  const bufferCache = useRef<AudioBuffer | null>(null);
+  const [needsPlay, setNeedsPlay] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [model, setModel] = useState("Claude");
@@ -292,7 +295,6 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       return () => {
         mounted.current = false;
         playbackId.current++;
-        audioRef.current?.pause();
         stopTransmission.current?.();
         stopDrone.current?.();
       };
@@ -310,13 +312,13 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
     return () => clearInterval(t);
   }, [story]);
 
-  const speak = async (text: string) => {
+  const speak = async (text: string, unlocked: Promise<boolean>) => {
     if (!mounted.current) return;
     const id = ++playbackId.current;
     const chosenVoice = VOICES[0].id;
-    audioRef.current?.pause();
     endSpeech();
     setErr(null);
+    setNeedsPlay(false);
     setVoiceLoading(true);
     try {
       if (voiceCache.current[chosenVoice] === undefined) {
@@ -327,29 +329,22 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       if (!mounted.current || id !== playbackId.current) return;
       const src = voiceCache.current[chosenVoice];
       if (!src) throw new Error("George's audio is unavailable. Try again.");
-      const a = new Audio(src);
-      audioRef.current = a;
-      a.onended = endSpeech;
-      a.onplaying = () => {
-        if (!mounted.current || id !== playbackId.current) return;
-        setVoiceLoading(false);
-        setSpeaking(true);
-        playStaticBurst();
-        stopDrone.current = startDrone();
-      };
-      a.onerror = () => {
-        if (!mounted.current || id !== playbackId.current) return;
-        delete voiceCache.current[chosenVoice];
-        setErr(`George playback failed: ${a.error?.message || "Audio could not be decoded. Try again."}`);
-        endSpeech();
-      };
-      stopTransmission.current = createGhostTransmission(a);
-      await unlockSpookyAudio();
+      if (!bufferCache.current) bufferCache.current = await decodeGhostTransmission(src);
+      await unlocked;
       if (!mounted.current || id !== playbackId.current) return;
-      await a.play();
+      stopTransmission.current = createGhostTransmission(bufferCache.current, () => {
+        if (mounted.current && id === playbackId.current) endSpeech();
+      });
+      setSpeaking(true);
+      playStaticBurst();
+      stopDrone.current = startDrone();
     } catch (e) {
       if (!mounted.current || id !== playbackId.current) return;
-      setErr(e instanceof Error ? e.message : "George's transmission failed. Try again.");
+      if (e instanceof Error && e.name === "NotAllowedError" && bufferCache.current) {
+        setNeedsPlay(true);
+      } else {
+        setErr(e instanceof Error ? e.message : "George's transmission failed. Try again.");
+      }
       endSpeech();
     } finally {
       if (mounted.current && id === playbackId.current) setVoiceLoading(false);
@@ -357,8 +352,9 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   };
 
   const hear = async () => {
-    void unlockSpookyAudio().catch(() => {});
-    if (story) return void speak(story);
+    // Call immediately on the gesture; capture rejection while network generation runs.
+    const unlocked = unlockSpookyAudio().then(() => true, () => false);
+    if (story) return void speak(story, unlocked);
     setLoading(true);
     setErr(null);
     try {
@@ -375,7 +371,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       if (!mounted.current) return;
       setStory(r.text);
       setModel(r.model);
-      void speak(r.text);
+      void speak(r.text, unlocked);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "The ghost went silent.");
     } finally {
@@ -414,13 +410,14 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
         <dt className="text-muted-foreground">Launched</dt><dd className="font-mono">{ghost.launchYear}</dd>
       </dl>
       <p className="mt-4 text-xs text-muted-foreground">{VOICES[0].label}</p>
-      <button
+      <Button
         onClick={hear}
         disabled={loading || voiceLoading}
-        className="mt-2 w-full rounded-md bg-spirit px-4 py-2 font-pixel text-[10px] uppercase text-primary-foreground shadow-[0_0_16px_var(--spirit)] transition hover:brightness-110 disabled:opacity-60"
+        className="mt-2 h-auto min-h-9 w-full whitespace-normal bg-spirit px-4 py-2 font-pixel text-[10px] uppercase text-primary-foreground shadow-[0_0_16px_var(--spirit)] transition hover:bg-spirit hover:brightness-110 disabled:opacity-60"
       >
-        {loading ? "Contacting the dead…" : voiceLoading ? "Tuning George’s transmission…" : speaking ? "The ghost speaks…" : story ? "Hear it again" : "Hear its story"}
-      </button>
+        {needsPlay && <Play aria-hidden="true" />}
+        {loading ? "Contacting the dead…" : voiceLoading ? "Tuning George’s transmission…" : needsPlay ? "Play George's transmission" : speaking ? "The ghost speaks…" : story ? "Hear it again" : "Hear its story"}
+      </Button>
       {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
       {shown && <p className="mt-4 text-sm italic leading-relaxed text-ghost/90">{shown}</p>}
       <p className="mt-4 border-t border-border pt-2 text-center text-[10px] text-muted-foreground">
