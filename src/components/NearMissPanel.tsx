@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { encounterTime, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
+import { encounterTime, MAX_NEAR_MISSES, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
 
 export function NearMissPanel({ ghosts, selected, onSelect }: {
   ghosts: ScanGhost[]; selected: NearMiss | null; onSelect: (encounter: NearMiss | null) => void;
