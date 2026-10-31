@@ -4,6 +4,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { GHOST_VOICES as VOICES } from "@/lib/ghost-voice-config";
+import { NearMissPanel } from "@/components/NearMissPanel";
+import type { NearMiss, ScanGhost } from "@/lib/near-misses";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
 
 const GhostGlobe = lazy(() => import("@/components/GhostGlobe"));
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [ghosts, setGhosts] = useState<Ghost[]>([]);
+  const [scanGhosts, setScanGhosts] = useState<ScanGhost[]>([]);
+  const [encounter, setEncounter] = useState<NearMiss | null>(null);
   const all = useRef<Ghost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sel, setSel] = useState<Ghost | null>(null);
@@ -41,6 +45,7 @@ function Index() {
     getDebris()
       .then((r) => {
         all.current = buildGhosts(r.objects);
+        setScanGhosts(all.current.map(g => ({ id: g.id, name: g.name, satrec: { ...g.satrec } })));
         setGhosts([...all.current]);
       })
       .catch((e) => setError(String(e?.message ?? e)));
@@ -60,10 +65,10 @@ function Index() {
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground">
       <Suspense fallback={null}>
-        <GhostGlobe ghosts={visible} selectedId={sel?.id ?? null} onSelect={setSel} rotate={rotate} focusSource={focus} />
+        <GhostGlobe ghosts={visible} selectedId={sel?.id ?? null} onSelect={(g) => { setEncounter(null); setSel(g); }} rotate={rotate} focusSource={focus} encounter={encounter} />
       </Suspense>
 
-      <header className="pointer-events-none absolute left-6 top-5 z-10">
+      <header className="pointer-events-none absolute left-6 top-5 z-10 max-w-[calc(100vw-3rem)]">
         <h1 className="font-display text-4xl text-ghost drop-shadow-[0_0_12px_var(--ghost)] sm:text-5xl">Ghost Orbit</h1>
         <p className="mt-2 font-pixel text-xs leading-relaxed text-spirit sm:text-sm">
           Earth's orbit is haunted — and we're running out of{" "}
@@ -81,7 +86,7 @@ function Index() {
         {rotate ? "❚❚ Pause spin" : "▶ Resume spin"}
       </button>
 
-      <aside className="panel absolute left-5 top-1/2 z-10 max-h-[calc(100vh-6rem)] w-72 -translate-y-1/2 overflow-y-auto">
+      <aside className="panel absolute bottom-20 left-5 top-40 z-10 w-72 overflow-y-auto md:bottom-auto md:top-1/2 md:max-h-[calc(100dvh-12rem)] md:-translate-y-1/2">
         <h2 className="font-pixel text-[10px] uppercase text-spirit">Ghost Radar</h2>
         {error ? (
           <p className="mt-2 text-sm text-destructive">{error}</p>
@@ -112,6 +117,7 @@ function Index() {
                   onClick={() => {
                     setCat(k);
                     setFocus(null);
+                    setEncounter(null);
                   }}
                   className={`rounded px-1 py-1 leading-tight transition ${cat === k ? "bg-spirit text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                 >
@@ -140,6 +146,7 @@ function Index() {
                       <button
                         onClick={() => {
                           setCat("all");
+                          setEncounter(null);
                           setFocus((f) => (f === k ? null : k));
                         }}
                         className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
@@ -172,6 +179,7 @@ function Index() {
                       <button
                         onClick={() => {
                           setCat("all");
+                          setEncounter(null);
                           setFocus((f) => (f === k ? null : k));
                         }}
                         className={`flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left transition hover:bg-muted ${focus === k ? "bg-spirit/20 ring-1 ring-spirit" : ""} ${focus && focus !== k ? "opacity-50" : ""}`}
@@ -180,10 +188,19 @@ function Index() {
                         <span className="font-mono text-ghost">{v}</span>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent side="right" className="w-72 border-spirit/40 text-sm">
+                    <PopoverContent side="right" className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] flex-col border-spirit/40 text-sm">
                       <p className="font-pixel text-[10px] uppercase text-spirit">{ORIGINS[k]}</p>
                       <p className="mt-2">{EVENTS[k]?.short}</p>
-                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{Object.values(ZOMBIES).map((z) => <li key={z.short}>{z.short}</li>)}</ul>
+                      <ul className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2 text-xs">
+                        {Object.values(ZOMBIES).map((z) => {
+                          const separator = z.short.indexOf(":");
+                          return <li key={z.short} className="border-b border-border pb-3 last:border-0">
+                            <p className="font-semibold text-ghost">{separator >= 0 ? z.short.slice(0, separator) : z.short}</p>
+                            <p className="mt-1 text-[10px] text-spirit">{z.status}</p>
+                            {separator >= 0 && <p className="mt-1 leading-relaxed text-muted-foreground">{z.short.slice(separator + 1).trim()}</p>}
+                          </li>;
+                        })}
+                      </ul>
                       <p className="mt-2 text-xs text-ghost">
                         {focus === k ? "Showing only these ghosts. Click again to show all." : "Click the name to highlight these ghosts."}
                       </p>
@@ -223,6 +240,10 @@ function Index() {
                 <span>{(stats.bins.at(-1)?.start ?? 0) + 100} km</span>
               </div>
             </div>
+            <NearMissPanel ghosts={scanGhosts} selected={encounter} onSelect={(next) => {
+              setEncounter(next);
+              if (next) { setSel(null); setCat("all"); setFocus(null); setRotate(false); }
+            }} />
           </>
         )}
       </aside>
@@ -357,7 +378,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
 
   return (
     <aside
-      className={`panel absolute right-5 top-5 z-10 w-80 max-w-[calc(100vw-2.5rem)] ${loading || speaking ? "seance-active" : ""}`}
+      className={`panel absolute right-5 top-5 z-10 max-h-[calc(100dvh-2.5rem)] w-80 max-w-[calc(100vw-2.5rem)] !overflow-y-auto ${loading || speaking ? "seance-active" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-display text-2xl text-ghost">👻 {ghost.name}</h2>
