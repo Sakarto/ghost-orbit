@@ -34,6 +34,8 @@ export default function GhostGlobe({
   encounterRef.current = encounter;
   const updateEncounter = useRef<((moveCamera: boolean) => void) | null>(null);
   const encounterScale = useRef(7);
+  const ghostsRef = useRef(ghosts);
+  ghostsRef.current = ghosts;
   rotRef.current = rotate;
   useEffect(() => {
     if (globe.current) globe.current.controls().autoRotate = rotate && !hoverRef.current;
@@ -155,7 +157,7 @@ export default function GhostGlobe({
         if (!first || !second) return;
         const separation = first.distanceTo(second);
         encounterScale.current = Math.max(0.035, Math.min(0.6, separation * 0.22));
-        g.objectsData(ghosts.map(d => d.id === near.a.id ? { ...d, ...near.a.point } : d.id === near.b.id ? { ...d, ...near.b.point } : d));
+        g.objectsData(ghostsRef.current.map(d => d.id === near.a.id ? { ...d, ...near.a.point } : d.id === near.b.id ? { ...d, ...near.b.point } : d));
         if (moveCamera) {
           const middle = first.clone().add(second).multiplyScalar(0.5);
           const axis = second.clone().sub(first).normalize();
