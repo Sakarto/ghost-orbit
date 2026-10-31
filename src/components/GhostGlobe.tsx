@@ -137,7 +137,9 @@ export default function GhostGlobe({
         });
         lineGeometry.setFromPoints(points);
         if (moveCamera) {
-          const middle = points[0].clone().add(points[1]).multiplyScalar(0.5);
+          const [first, second] = points;
+          if (!first || !second) return;
+          const middle = first.clone().add(second).multiplyScalar(0.5);
           const location = g.toGeoCoords(middle);
           g.pointOfView({ lat: location.lat, lng: location.lng, altitude: Math.max(1.1, displayAltitude(Math.max(near.a.point.alt, near.b.point.alt)) + 0.8) }, 1200);
         }

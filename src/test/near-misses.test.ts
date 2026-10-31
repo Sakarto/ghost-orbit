@@ -3,6 +3,13 @@ import * as sat from "satellite.js";
 import { ALTITUDE_WINDOW_KM, SCAN_STEPS, SCAN_STEP_SECONDS, collectApproaches, encounterTime, scanNearMisses, type NearMiss, type OrbitSample } from "@/lib/near-misses";
 import fallback from "@/data/fallback-tle.json";
 
+vi.mock("satellite.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("satellite.js")>();
+  return { ...actual, propagate: vi.fn(actual.propagate) };
+});
+const fixture = fallback[0];
+if (!fixture) throw new Error("Missing orbit fixture");
+
 const sample = (id: string, altitude: number, x: number, velocity = { x: 0, y: 0, z: 0 }): OrbitSample => ({
   id, name: id, position: { x, y: 0, z: 0 }, velocity, point: { lat: 0, lng: 0, alt: altitude },
 });
@@ -32,18 +39,18 @@ it("keeps each pair's minimum ECI distance and relative velocity at that epoch",
 it("scans 61 samples at 60 seconds including now and the hour endpoint", () => {
   expect(SCAN_STEPS).toBe(61);
   expect(SCAN_STEP_SECONDS).toBe(60);
-  const record = sat.twoline2satrec(fallback[0].l1, fallback[0].l2);
+  const record = sat.twoline2satrec(fixture.l1, fixture.l2);
   const spy = vi.spyOn(sat, "propagate").mockReturnValue({ position: { x: 7000, y: 0, z: 0 }, velocity: { x: 0, y: 7, z: 0 } });
   const start = Date.UTC(2026, 9, 31);
   scanNearMisses([{ id: "a", name: "a", satrec: record }], start);
   expect(spy).toHaveBeenCalledTimes(61);
-  expect((spy.mock.calls[0][1] as Date).getTime()).toBe(start);
-  expect((spy.mock.calls[60][1] as Date).getTime()).toBe(start + 3600000);
+  expect((spy.mock.calls[0]?.[1] as Date).getTime()).toBe(start);
+  expect((spy.mock.calls[60]?.[1] as Date).getTime()).toBe(start + 3600000);
   spy.mockRestore();
 });
 
 it("returns the top five unique pairs ranked by sampled distance", () => {
-  const record = sat.twoline2satrec(fallback[0].l1, fallback[0].l2);
+  const record = sat.twoline2satrec(fixture.l1, fixture.l2);
   const input = Array.from({ length: 7 }, (_, i) => ({ id: String(i), name: `Ghost ${i}`, satrec: { ...record, satnum: String(i) } }));
   const spy = vi.spyOn(sat, "propagate").mockImplementation(rec => ({ position: { x: 7000 + Number(rec.satnum) ** 2, y: 0, z: 0 }, velocity: { x: 0, y: 7, z: 0 } }));
   const result = scanNearMisses(input, Date.UTC(2026, 9, 31));
@@ -54,7 +61,7 @@ it("returns the top five unique pairs ranked by sampled distance", () => {
 });
 
 it("skips failed propagation rather than reporting corrupt distances", () => {
-  const record = sat.twoline2satrec(fallback[0].l1, fallback[0].l2);
+  const record = sat.twoline2satrec(fixture.l1, fixture.l2);
   const spy = vi.spyOn(sat, "propagate").mockReturnValue({ position: false, velocity: false });
   expect(scanNearMisses([{ id: "a", name: "a", satrec: record }], 0).encounters).toEqual([]);
   spy.mockRestore();

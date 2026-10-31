@@ -30,8 +30,10 @@ export function collectApproaches(samples: OrbitSample[], at: number, minima: Ma
   samples.sort((a, b) => a.point.alt - b.point.alt);
   for (let i = 0; i < samples.length; i++) {
     const a = samples[i];
+    if (!a) continue;
     for (let j = i + 1; j < samples.length; j++) {
       const b = samples[j];
+      if (!b) continue;
       if (b.point.alt - a.point.alt > ALTITUDE_WINDOW_KM) break;
       if (a.id === b.id) continue;
       const key = [a.id, b.id].sort().join(":");
