@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import type { Ghost } from "@/lib/debris";
+import type { NearMiss } from "@/lib/near-misses";
 
 const EARTH_R = 6371;
+const displayAltitude = (alt: number) => (alt <= 3000 ? alt : 3000 + Math.sqrt(alt - 3000) * 40) / EARTH_R;
 
 export default function GhostGlobe({
   ghosts,
@@ -9,7 +11,9 @@ export default function GhostGlobe({
   onSelect,
   rotate,
   focusSource,
+  encounter,
 }: {
+  encounter: NearMiss | null;
   focusSource: string | null;
   rotate: boolean;
   ghosts: Ghost[];
@@ -26,6 +30,9 @@ export default function GhostGlobe({
   focusRef.current = focusSource;
   const rotRef = useRef(rotate);
   const hoverRef = useRef(false);
+  const encounterRef = useRef(encounter);
+  encounterRef.current = encounter;
+  const updateEncounter = useRef<((moveCamera: boolean) => void) | null>(null);
   rotRef.current = rotate;
   useEffect(() => {
     if (globe.current) globe.current.controls().autoRotate = rotate && !hoverRef.current;
@@ -37,7 +44,8 @@ export default function GhostGlobe({
       const makeTex = (color: string) => {
         const c = document.createElement("canvas");
         c.width = c.height = 64;
-        const x = c.getContext("2d")!;
+        const x = c.getContext("2d");
+        if (!x) return new THREE.Texture();
         x.shadowColor = color;
         x.shadowBlur = 14;
         x.fillStyle = color;
@@ -62,6 +70,12 @@ export default function GhostGlobe({
       const dimMat = new THREE.SpriteMaterial({ map: makeTex("#7dffb0"), transparent: true, opacity: 0.12, depthWrite: false });
       const zMat = new THREE.SpriteMaterial({ map: makeTex("#ffb35c"), transparent: true, depthWrite: false });
       const selMat = new THREE.SpriteMaterial({ map: makeTex("#c79bff"), transparent: true, depthWrite: false });
+      const dangerColor = getComputedStyle(document.documentElement).getPropertyValue("--destructive").trim();
+      // Canvas/Three require a resolved sRGB color, rather than an OKLCH CSS token.
+      const resolver = document.createElement("canvas").getContext("2d");
+      if (resolver) resolver.fillStyle = dangerColor;
+      const danger = resolver ? String(resolver.fillStyle) : dangerColor;
+      const dangerMat = new THREE.SpriteMaterial({ map: makeTex(danger), transparent: true, depthWrite: false });
       // Large invisible hitbox so tiny ghosts are easy to click
       const hitGeo = new THREE.SphereGeometry(2.4, 6, 6);
       const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
@@ -75,7 +89,7 @@ export default function GhostGlobe({
         .objectLat("lat")
         .objectLng("lng")
         // High orbits (GPS ~20,000 km, geostationary ~36,000 km) are compressed so they stay on screen.
-        .objectAltitude((d: Ghost) => (d.alt <= 3000 ? d.alt : 3000 + Math.sqrt(d.alt - 3000) * 40) / EARTH_R)
+        .objectAltitude((d: Ghost) => displayAltitude(d.alt))
         .objectFacesSurface(false)
         .objectThreeObject((d: Ghost) => {
           const sel = d.id === selRef.current;
@@ -83,8 +97,10 @@ export default function GhostGlobe({
           const dim = !!f && d.source !== f && !sel;
           const hot = !!f && d.source === f;
           const z = d.source === "derelict";
-          const sp = new THREE.Sprite(sel ? selMat : dim ? dimMat : z ? zMat : mat);
-          sp.scale.setScalar(sel ? 7 : z ? 8 : hot ? 5 : 4);
+          const near = encounterRef.current;
+          const danger = d.id === near?.a.id || d.id === near?.b.id;
+          const sp = new THREE.Sprite(danger ? dangerMat : sel ? selMat : dim ? dimMat : z ? zMat : mat);
+          sp.scale.setScalar(danger ? 11 : sel ? 7 : z ? 8 : hot ? 5 : 4);
           const hit = new THREE.Mesh(hitGeo, hitMat);
           const grp = new THREE.Group();
           grp.add(sp, hit);
@@ -105,7 +121,30 @@ export default function GhostGlobe({
       g.controls().autoRotateSpeed = 0.25;
       g.pointOfView({ altitude: 2.6 });
       globe.current = g;
+      const lineGeometry = new THREE.BufferGeometry();
+      const lineMaterial = new THREE.LineBasicMaterial({ color: danger, depthTest: false, transparent: true, opacity: 0.95 });
+      const line = new THREE.Line(lineGeometry, lineMaterial);
+      line.visible = false;
+      line.renderOrder = 10;
+      g.scene().add(line);
+      updateEncounter.current = (moveCamera) => {
+        const near = encounterRef.current;
+        line.visible = !!near;
+        if (!near) return;
+        const points = [near.a.point, near.b.point].map(p => {
+          const c = g.getCoords(p.lat, p.lng, displayAltitude(p.alt));
+          return new THREE.Vector3(c.x, c.y, c.z);
+        });
+        lineGeometry.setFromPoints(points);
+        if (moveCamera) {
+          const middle = points[0].clone().add(points[1]).multiplyScalar(0.5);
+          const location = g.toGeoCoords(middle);
+          g.pointOfView({ lat: location.lat, lng: location.lng, altitude: Math.max(1.1, displayAltitude(Math.max(near.a.point.alt, near.b.point.alt)) + 0.8) }, 1200);
+        }
+        el.current?.setAttribute("data-encounter-preview", near.key);
+      };
       g.objectsData(ghosts);
+      updateEncounter.current(true);
       const resize = () => g.width(el.current?.clientWidth ?? 0).height(el.current?.clientHeight ?? 0);
       resize();
       window.addEventListener("resize", resize);
@@ -114,13 +153,22 @@ export default function GhostGlobe({
     return () => {
       cancelled = true;
       globe.current?._destructor?.();
+      updateEncounter.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    globe.current?.objectsData([...ghosts]);
-  }, [ghosts, selectedId, focusSource]);
+    const near = encounterRef.current;
+    // Keep the pair at its predicted encounter epoch, not at today's live coordinates.
+    const preview = ghosts.map(g => g.id === near?.a.id ? { ...g, ...near.a.point } : g.id === near?.b.id ? { ...g, ...near.b.point } : g);
+    globe.current?.objectsData(preview);
+  }, [ghosts, selectedId, focusSource, encounter]);
+
+  useEffect(() => {
+    updateEncounter.current?.(true);
+    if (!encounter) el.current?.removeAttribute("data-encounter-preview");
+  }, [encounter]);
 
   return <div ref={el} className="absolute inset-y-0 right-0 left-0 md:left-[19.25rem]" />;
 }
