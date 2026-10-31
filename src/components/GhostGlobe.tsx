@@ -120,7 +120,8 @@ export default function GhostGlobe({
           if (el.current) el.current.style.cursor = d ? "pointer" : "grab";
         });
       const gm = g.globeMaterial();
-      gm.color = new THREE.Color("#4a4f78");
+      if (resolver) resolver.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--earth-surface").trim();
+      gm.color = new THREE.Color(resolver ? String(resolver.fillStyle) : danger);
       gm.emissive = new THREE.Color("#1a0d33");
       gm.emissiveIntensity = 0.35;
       g.controls().autoRotate = true;
@@ -142,6 +143,7 @@ export default function GhostGlobe({
         const near = encounterRef.current;
         line.visible = glow.visible = !!near;
         if (!near) {
+          g.controls().enabled = true;
           g.controls().target.set(0, 0, 0);
           g.controls().minDistance = 101;
           encounterScale.current = 7;
@@ -170,6 +172,9 @@ export default function GhostGlobe({
           const destination = middle.clone().addScaledVector(direction, distance);
           const camera = g.camera();
           const controls = g.controls();
+          // globe.gl's controls forcibly lock look-at to Earth's center on change.
+          // A close encounter must look at the pair, not through it at the surface.
+          controls.enabled = false;
           controls.minDistance = 0.1;
           const initialPosition = camera.position.clone();
           const initialTarget = controls.target.clone();
@@ -181,7 +186,7 @@ export default function GhostGlobe({
             const eased = progress * progress * (3 - 2 * progress);
             camera.position.lerpVectors(initialPosition, destination, eased);
             controls.target.lerpVectors(initialTarget, middle, eased);
-            controls.update();
+            camera.lookAt(controls.target);
             if (progress < 1) frame = requestAnimationFrame(animate);
           };
           animate();
