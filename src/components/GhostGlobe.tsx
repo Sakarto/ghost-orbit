@@ -186,7 +186,7 @@ export default function GhostGlobe({
           // the encounter region, then dive in to the tight pair framing.
           const start = camera.position.clone();
           const startTarget = controls.target.clone();
-          const wide = Math.max(start.length(), 320);
+          const wide = Math.max(start.length() * 1.5, 320);
           const wideStart = start.clone().normalize().multiplyScalar(wide);
           const widePair = middle.clone().normalize().multiplyScalar(wide);
           const center = new THREE.Vector3(0, 0, 0);
