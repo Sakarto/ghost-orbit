@@ -26,6 +26,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
       const scan = () => {
         if (busy) return;
         busy = true;
+        lastScanRef.current = Date.now();
         setScanning(true);
         setError(null);
         worker.postMessage({ ghosts, startedAt: Date.now() });
