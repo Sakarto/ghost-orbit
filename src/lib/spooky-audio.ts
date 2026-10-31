@@ -30,7 +30,13 @@ export async function decodeGhostTransmission(src: string): Promise<AudioBuffer>
   if (!c) throw new Error("Audio processing is unavailable.");
   const response = await fetch(src);
   if (!response.ok) throw new Error("George's recording could not be loaded.");
-  return c.decodeAudioData(await response.arrayBuffer());
+  try {
+    const buffer = await c.decodeAudioData(await response.arrayBuffer());
+    if (!buffer.length) throw new Error("The recording is empty.");
+    return buffer;
+  } catch (error) {
+    throw new Error(`George's recording could not be decoded: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** No clean audio bypass: every voice passes through the haunted radio graph. */
@@ -73,7 +79,7 @@ export function createGhostTransmission(buffer: AudioBuffer, onEnded: () => void
   const reverbMix = c.createGain();
   reverbMix.gain.value = 0.13;
   const output = c.createGain();
-  output.gain.value = 0.8;
+  output.gain.value = 1.35;
 
   source.connect(highpass).connect(lowpass).connect(tremolo);
   tremolo.connect(output);
@@ -121,9 +127,9 @@ export function playStaticBurst() {
   bp.Q.value = 0.6;
   const g = c.createGain();
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.18, t + 0.05);
+  g.gain.linearRampToValueAtTime(0.05, t + 0.05);
   // stuttering "tuning" flutter
-  for (let i = 0; i < 8; i++) g.gain.setValueAtTime(i % 2 ? 0.04 : 0.16, t + 0.1 + i * 0.09);
+  for (let i = 0; i < 8; i++) g.gain.setValueAtTime(i % 2 ? 0.012 : 0.045, t + 0.1 + i * 0.09);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
   src.connect(bp).connect(g).connect(c.destination);
   src.start(t);
@@ -135,7 +141,7 @@ export function playStaticBurst() {
     o.frequency.value = f;
     const og = c.createGain();
     og.gain.setValueAtTime(0, t + 0.6 + i * 0.12);
-    og.gain.linearRampToValueAtTime(0.05, t + 0.65 + i * 0.12);
+    og.gain.linearRampToValueAtTime(0.015, t + 0.65 + i * 0.12);
     og.gain.exponentialRampToValueAtTime(0.0001, t + 3 + i * 0.12);
     o.connect(og).connect(c.destination);
     o.start(t + 0.6 + i * 0.12);
@@ -150,7 +156,7 @@ export function startDrone(): () => void {
   const t = c.currentTime;
   const master = c.createGain();
   master.gain.setValueAtTime(0, t);
-  master.gain.linearRampToValueAtTime(0.06, t + 2);
+  master.gain.linearRampToValueAtTime(0.018, t + 2);
   master.connect(c.destination);
 
   const wind = c.createBufferSource();

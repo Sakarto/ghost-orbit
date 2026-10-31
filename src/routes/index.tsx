@@ -330,7 +330,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       const src = voiceCache.current[chosenVoice];
       if (!src) throw new Error("George's audio is unavailable. Try again.");
       if (!bufferCache.current) bufferCache.current = await decodeGhostTransmission(src);
-      await unlocked;
+      if (!(await unlocked)) throw new DOMException("Tap to enable George's transmission.", "NotAllowedError");
       if (!mounted.current || id !== playbackId.current) return;
       stopTransmission.current = createGhostTransmission(bufferCache.current, () => {
         if (mounted.current && id === playbackId.current) endSpeech();
