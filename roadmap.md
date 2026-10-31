@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Make intact satellite list readable and scrollable without clipping; verify details scrolling
 - [ ] Compute next-hour closest approaches in a Web Worker and test numerical rules
 - [ ] Add clickable Near Misses panel with red encounter preview and verify in the globe
 - [x] Keep George as the only voice and remove selector
