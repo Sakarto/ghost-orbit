@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Resume spin exits encounter preview and refreshes current orbital positions; verify
+- [x] Resume spin exits encounter preview and refreshes current orbital positions; verified
 - [x] Lighten continents very slightly while retaining the dark Earth
 - [x] Separate left radar and right near-misses below heading; center globe
 - [x] Tight encounter framing and thick glowing connector; verify desktop and small screens
