@@ -203,7 +203,7 @@ export default function GhostGlobe({
             return out.copy(a).multiplyScalar(Math.sin((1 - t) * angle) / sin)
               .addScaledVector(b, Math.sin(t * angle) / sin);
           };
-          const phaseMs = [700, 900, 900];
+          const phaseMs = [700, 900, 900] as const;
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const started = performance.now();
           const ease = (f: number) => f * f * (3 - 2 * f);
@@ -220,8 +220,9 @@ export default function GhostGlobe({
             const total = phaseMs[0] + phaseMs[1] + phaseMs[2];
             let remaining = Math.min(elapsed, total);
             let seg = 0;
-            while (seg < 2 && remaining > phaseMs[seg]) { remaining -= phaseMs[seg]; seg++; }
-            const f = ease(Math.min(1, remaining / phaseMs[seg]));
+            const phase = seg === 0 ? phaseMs[0] : seg === 1 ? phaseMs[1] : phaseMs[2];
+            while (seg < 2 && remaining > phase) { remaining -= phase; seg++; }
+            const f = ease(Math.min(1, remaining / phase));
             if (seg === 0) {
               camera.position.copy(startDir).multiplyScalar(startLength + (wide - startLength) * f);
               controls.target.lerpVectors(startTarget, center, f);
