@@ -203,7 +203,10 @@ export default function GhostGlobe({
             return out.copy(a).multiplyScalar(Math.sin((1 - t) * angle) / sin)
               .addScaledVector(b, Math.sin(t * angle) / sin);
           };
-          const phaseMs = [700, 900, 900] as const;
+          // Pull back 700 ms, orbit 900 ms, dive in 900 ms.
+          const OUT_MS = 700;
+          const ORBIT_MS = 900;
+          const DIVE_MS = 900;
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const started = performance.now();
           const ease = (f: number) => f * f * (3 - 2 * f);
@@ -217,11 +220,12 @@ export default function GhostGlobe({
               camera.lookAt(controls.target);
               return;
             }
-            const total = phaseMs[0] + phaseMs[1] + phaseMs[2];
+            const total = OUT_MS + ORBIT_MS + DIVE_MS;
             let remaining = Math.min(elapsed, total);
-            let seg = 0;
-            const phase = seg === 0 ? phaseMs[0] : seg === 1 ? phaseMs[1] : phaseMs[2];
-            while (seg < 2 && remaining > phase) { remaining -= phase; seg++; }
+            const seg = remaining <= OUT_MS ? 0 : remaining <= OUT_MS + ORBIT_MS ? 1 : 2;
+            if (seg > 0) remaining -= OUT_MS;
+            if (seg > 1) remaining -= ORBIT_MS;
+            const phase = seg === 0 ? OUT_MS : seg === 1 ? ORBIT_MS : DIVE_MS;
             const f = ease(Math.min(1, remaining / phase));
             if (seg === 0) {
               camera.position.copy(startDir).multiplyScalar(startLength + (wide - startLength) * f);
