@@ -11,6 +11,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [now, setNow] = useState(0);
+  const lastScanRef = useRef(0);
   useEffect(() => {
     const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(clock);
