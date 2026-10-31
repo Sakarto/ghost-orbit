@@ -207,6 +207,7 @@ export default function GhostGlobe({
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const started = performance.now();
           const ease = (f: number) => f * f * (3 - 2 * f);
+          let minRadius = Infinity;
           const animate = () => {
             if (cancelled) return;
             const elapsed = performance.now() - started;
