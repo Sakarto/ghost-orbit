@@ -20,3 +20,5 @@
 - [x] Verify ElevenLabs story audio end-to-end
 - [x] Own Anthropic key uses Claude Opus; badge shows the model actually used
 - [x] Glitch voice is blocked on the current ElevenLabs plan: default to a working voice
+- [ ] Near-miss flight: zoom out, travel at wide view, then dive in (in progress)
+- [ ] Near-miss flight path orbits Earth, never cutting through the globe
