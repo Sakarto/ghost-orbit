@@ -143,14 +143,14 @@ This text is read aloud by a voice engine, so write ONLY natural spoken English 
     return { text: clean, model: anthropicKey ? "Claude Opus 5.5" : "Claude Sonnet 5" };
   });
 
-/** ElevenLabs voice. Returns audio:null when no key is set so the browser voice can take over. */
+/** George only; failures are surfaced without substituting a browser narrator. */
 export const ghostVoice = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z.object({ text: z.string().min(1).max(1500), voice: z.enum(VOICE_IDS).default(VOICE_IDS[0]) }).parse(d),
   )
   .handler(async ({ data }) => {
     const key = process.env["ELEVENLABS_API_KEY"];
-    if (!key) return { audio: null as string | null, reason: "no-key" };
+    if (!key) return { audio: null as string | null, reason: "ElevenLabs is not connected. George is unavailable.", status: 503 };
     const res = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${data.voice}?output_format=mp3_44100_128`,
       {

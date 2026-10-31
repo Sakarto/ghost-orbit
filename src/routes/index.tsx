@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { createGhostTransmission, playStaticBurst, startDrone, unlockSpookyAudio } from "@/lib/spooky-audio";
 import { getDebris, ghostStory, ghostVoice } from "@/lib/orbit.functions";
 import { GHOST_VOICES as VOICES } from "@/lib/ghost-voice-config";
+import { requireGhostAudio } from "@/lib/ghost-response";
 import { NearMissPanel } from "@/components/NearMissPanel";
 import type { NearMiss, ScanGhost } from "@/lib/near-misses";
 import { buildGhosts, EVENT_META, EVENTS, ZOMBIES, histogram, ORIGINS, propagateAll, type Ghost } from "@/lib/debris";
@@ -275,6 +276,7 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
   const mounted = useRef(true);
   const voiceCache = useRef<Record<string, string>>({});
   const [speaking, setSpeaking] = useState(false);
+  const [voiceLoading, setVoiceLoading] = useState(false);
   const [model, setModel] = useState("Claude");
   const stopDrone = useRef<(() => void) | null>(null);
   const endSpeech = () => {
@@ -290,7 +292,6 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       return () => {
         mounted.current = false;
         playbackId.current++;
-        window.speechSynthesis?.cancel();
         audioRef.current?.pause();
         stopTransmission.current?.();
         stopDrone.current?.();
@@ -314,53 +315,49 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
     const id = ++playbackId.current;
     const chosenVoice = VOICES[0].id;
     audioRef.current?.pause();
-    window.speechSynthesis?.cancel();
     endSpeech();
-    setSpeaking(true);
-    if (voiceCache.current[chosenVoice] === undefined) {
-      try {
+    setErr(null);
+    setVoiceLoading(true);
+    try {
+      if (voiceCache.current[chosenVoice] === undefined) {
         const v = await ghostVoice({ data: { text, voice: chosenVoice } });
-        voiceCache.current[chosenVoice] = v.audio ? `data:audio/mpeg;base64,${v.audio}` : "";
-      } catch {
-        voiceCache.current[chosenVoice] = "";
+        if (!mounted.current || id !== playbackId.current) return;
+        voiceCache.current[chosenVoice] = requireGhostAudio(v);
       }
-    }
-    if (!mounted.current || id !== playbackId.current) return;
-    const beginTransmission = () => {
       if (!mounted.current || id !== playbackId.current) return;
-      playStaticBurst();
-      stopDrone.current = startDrone();
-    };
-    const src = voiceCache.current[chosenVoice];
-    if (src) {
+      const src = voiceCache.current[chosenVoice];
+      if (!src) throw new Error("George's audio is unavailable. Try again.");
       const a = new Audio(src);
       audioRef.current = a;
       a.onended = endSpeech;
-      a.onplaying = beginTransmission;
-      a.onerror = endSpeech;
-      try {
-        stopTransmission.current = createGhostTransmission(a);
-        await a.play();
-        return;
-      } catch {
-        stopTransmission.current?.();
-        stopTransmission.current = null;
-        /* fall back to browser voice */
-      }
+      a.onplaying = () => {
+        if (!mounted.current || id !== playbackId.current) return;
+        setVoiceLoading(false);
+        setSpeaking(true);
+        playStaticBurst();
+        stopDrone.current = startDrone();
+      };
+      a.onerror = () => {
+        if (!mounted.current || id !== playbackId.current) return;
+        delete voiceCache.current[chosenVoice];
+        setErr(`George playback failed: ${a.error?.message || "Audio could not be decoded. Try again."}`);
+        endSpeech();
+      };
+      stopTransmission.current = createGhostTransmission(a);
+      await unlockSpookyAudio();
+      if (!mounted.current || id !== playbackId.current) return;
+      await a.play();
+    } catch (e) {
+      if (!mounted.current || id !== playbackId.current) return;
+      setErr(e instanceof Error ? e.message : "George's transmission failed. Try again.");
+      endSpeech();
+    } finally {
+      if (mounted.current && id === playbackId.current) setVoiceLoading(false);
     }
-    const s = window.speechSynthesis;
-    if (!s) return endSpeech();
-    const u = new SpeechSynthesisUtterance(text);
-    u.pitch = 0.3;
-    u.rate = 0.8;
-    u.onend = endSpeech;
-    u.onerror = endSpeech;
-    u.onstart = beginTransmission;
-    s.speak(u);
   };
 
   const hear = async () => {
-    unlockSpookyAudio();
+    void unlockSpookyAudio().catch(() => {});
     if (story) return void speak(story);
     setLoading(true);
     setErr(null);
@@ -419,10 +416,10 @@ function GhostPanel({ ghost, onClose }: { ghost: Ghost; onClose: () => void }) {
       <p className="mt-4 text-xs text-muted-foreground">{VOICES[0].label}</p>
       <button
         onClick={hear}
-        disabled={loading}
+        disabled={loading || voiceLoading}
         className="mt-2 w-full rounded-md bg-spirit px-4 py-2 font-pixel text-[10px] uppercase text-primary-foreground shadow-[0_0_16px_var(--spirit)] transition hover:brightness-110 disabled:opacity-60"
       >
-        {loading ? "Contacting the dead…" : speaking ? "The ghost speaks…" : story ? "Hear it again" : "Hear its story"}
+        {loading ? "Contacting the dead…" : voiceLoading ? "Tuning George’s transmission…" : speaking ? "The ghost speaks…" : story ? "Hear it again" : "Hear its story"}
       </button>
       {err && <p className="mt-3 text-sm text-destructive">{err}</p>}
       {shown && <p className="mt-4 text-sm italic leading-relaxed text-ghost/90">{shown}</p>}
