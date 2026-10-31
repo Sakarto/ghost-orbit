@@ -182,19 +182,27 @@ export default function GhostGlobe({
           // A close encounter must look at the pair, not through it at the surface.
           controls.enabled = false;
           controls.minDistance = 0.1;
-          // Cinematic approach: pull back to a wide view, fly over the globe to
-          // the encounter region, then dive in to the tight pair framing.
+          // Cinematic approach that never cuts through the globe: pull straight
+          // back from the current view, orbit around Earth at a wide radius to
+          // the encounter region, then dive radially in to the tight framing.
           const start = camera.position.clone();
+          const startLength = start.length();
+          const startDir = start.clone().normalize();
           const startTarget = controls.target.clone();
-          const wide = Math.max(start.length() * 1.5, 320);
-          const wideStart = start.clone().normalize().multiplyScalar(wide);
-          const widePair = middle.clone().normalize().multiplyScalar(wide);
+          const pairDir = middle.clone().normalize();
+          const wide = Math.max(startLength * 1.5, 320);
+          const widePair = pairDir.clone().multiplyScalar(wide);
           const center = new THREE.Vector3(0, 0, 0);
-          const segments = [
-            { from: start, to: wideStart, targetFrom: startTarget, targetTo: center },
-            { from: wideStart, to: widePair, targetFrom: center, targetTo: center },
-            { from: widePair, to: destination, targetFrom: center, targetTo: middle },
-          ];
+          // Spherical interpolation between two directions, so the camera
+          // sweeps along the sphere's surface instead of a chord through it.
+          const slerpDir = (a: THREE.Vector3, b: THREE.Vector3, t: number, out: THREE.Vector3) => {
+            const dot = Math.min(1, Math.max(-1, a.dot(b)));
+            const angle = Math.acos(dot);
+            if (angle < 1e-4) return out.copy(a);
+            const sin = Math.sin(angle);
+            return out.copy(a).multiplyScalar(Math.sin((1 - t) * angle) / sin)
+              .addScaledVector(b, Math.sin(t * angle) / sin);
+          };
           const phaseMs = [700, 900, 900];
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const started = performance.now();
@@ -212,10 +220,17 @@ export default function GhostGlobe({
             let remaining = Math.min(elapsed, total);
             let seg = 0;
             while (seg < 2 && remaining > phaseMs[seg]) { remaining -= phaseMs[seg]; seg++; }
-            const s = segments[seg];
             const f = ease(Math.min(1, remaining / phaseMs[seg]));
-            camera.position.lerpVectors(s.from, s.to, f);
-            controls.target.lerpVectors(s.targetFrom, s.targetTo, f);
+            if (seg === 0) {
+              camera.position.copy(startDir).multiplyScalar(startLength + (wide - startLength) * f);
+              controls.target.lerpVectors(startTarget, center, f);
+            } else if (seg === 1) {
+              slerpDir(startDir, pairDir, f, camera.position).multiplyScalar(wide);
+              controls.target.copy(center);
+            } else {
+              camera.position.lerpVectors(widePair, destination, f);
+              controls.target.lerpVectors(center, middle, f);
+            }
             camera.lookAt(controls.target);
             if (elapsed < total) frame = requestAnimationFrame(animate);
           };
