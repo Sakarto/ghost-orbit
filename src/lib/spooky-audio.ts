@@ -13,18 +13,41 @@ function ac() {
 export async function unlockSpookyAudio() {
   const c = ac();
   if (!c) throw new Error("Audio processing is unavailable.");
-  if (c.state === "suspended") await c.resume();
-  if (c.state !== "running") throw new Error("George's audio is blocked. Tap Hear it again to enable sound.");
+  // Both resume and a silent source start happen on the original tap, before any await.
+  const resumed = c.state === "running" ? Promise.resolve() : c.resume();
+  const prime = c.createBufferSource();
+  prime.buffer = c.createBuffer(1, 1, c.sampleRate);
+  prime.connect(c.destination);
+  prime.onended = () => prime.disconnect();
+  prime.start();
+  await resumed;
+  if (c.state !== "running") throw new DOMException("Tap Play George's transmission to enable sound.", "NotAllowedError");
+}
+
+/** Decode once; cached buffers replay without a network request or a media element. */
+export async function decodeGhostTransmission(src: string): Promise<AudioBuffer> {
+  const c = ac();
+  if (!c) throw new Error("Audio processing is unavailable.");
+  const response = await fetch(src);
+  if (!response.ok) throw new Error("George's recording could not be loaded.");
+  try {
+    const buffer = await c.decodeAudioData(await response.arrayBuffer());
+    if (!buffer.length) throw new Error("The recording is empty.");
+    return buffer;
+  } catch (error) {
+    throw new Error(`George's recording could not be decoded: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** No clean audio bypass: every voice passes through the haunted radio graph. */
-export function createGhostTransmission(audio: HTMLAudioElement): () => void {
+export function createGhostTransmission(buffer: AudioBuffer, onEnded: () => void = () => {}): () => void {
   const c = ac();
   if (!c) throw new Error("Audio processing is unavailable");
-  // Browsers preserve pitch by default; turn that off so slower playback also deepens the voice.
-  audio.preservesPitch = false;
-  audio.playbackRate = GHOST_PLAYBACK_RATE;
-  const source = c.createMediaElementSource(audio);
+  if (c.state !== "running") throw new DOMException("Tap Play George's transmission to enable sound.", "NotAllowedError");
+  // Buffer-source rate naturally lowers pitch as well; no HTML media autoplay token is needed.
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = GHOST_PLAYBACK_RATE;
   const highpass = c.createBiquadFilter();
   highpass.type = "highpass";
   highpass.frequency.value = 350;
@@ -56,7 +79,7 @@ export function createGhostTransmission(audio: HTMLAudioElement): () => void {
   const reverbMix = c.createGain();
   reverbMix.gain.value = 0.13;
   const output = c.createGain();
-  output.gain.value = 0.8;
+  output.gain.value = 1.35;
 
   source.connect(highpass).connect(lowpass).connect(tremolo);
   tremolo.connect(output);
@@ -66,14 +89,23 @@ export function createGhostTransmission(audio: HTMLAudioElement): () => void {
   output.connect(c.destination);
   lfo.start();
   let stopped = false;
-  return () => {
+  const stop = () => {
     if (stopped) return;
     stopped = true;
-    audio.pause();
+    source.onended = null;
+    source.stop();
     lfo.stop();
     [source, highpass, lowpass, tremolo, lfo, depth, delay, dampening, feedback, echoMix, reverb, reverbMix, output]
       .forEach((node) => node.disconnect());
   };
+  source.onended = () => { stop(); onEnded(); };
+  try {
+    source.start();
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  return stop;
 }
 
 function noiseBuffer(c: AudioContext, seconds: number) {
@@ -95,9 +127,9 @@ export function playStaticBurst() {
   bp.Q.value = 0.6;
   const g = c.createGain();
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.18, t + 0.05);
+  g.gain.linearRampToValueAtTime(0.05, t + 0.05);
   // stuttering "tuning" flutter
-  for (let i = 0; i < 8; i++) g.gain.setValueAtTime(i % 2 ? 0.04 : 0.16, t + 0.1 + i * 0.09);
+  for (let i = 0; i < 8; i++) g.gain.setValueAtTime(i % 2 ? 0.012 : 0.045, t + 0.1 + i * 0.09);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
   src.connect(bp).connect(g).connect(c.destination);
   src.start(t);
@@ -109,7 +141,7 @@ export function playStaticBurst() {
     o.frequency.value = f;
     const og = c.createGain();
     og.gain.setValueAtTime(0, t + 0.6 + i * 0.12);
-    og.gain.linearRampToValueAtTime(0.05, t + 0.65 + i * 0.12);
+    og.gain.linearRampToValueAtTime(0.015, t + 0.65 + i * 0.12);
     og.gain.exponentialRampToValueAtTime(0.0001, t + 3 + i * 0.12);
     o.connect(og).connect(c.destination);
     o.start(t + 0.6 + i * 0.12);
@@ -124,7 +156,7 @@ export function startDrone(): () => void {
   const t = c.currentTime;
   const master = c.createGain();
   master.gain.setValueAtTime(0, t);
-  master.gain.linearRampToValueAtTime(0.06, t + 2);
+  master.gain.linearRampToValueAtTime(0.018, t + 2);
   master.connect(c.destination);
 
   const wind = c.createBufferSource();

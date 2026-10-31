@@ -9,7 +9,7 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Orbit data is fetched server-side (src/lib/orbit.functions.ts) with a bundled fallback in src/data; why: avoids browser CORS blocks from CelesTrak.
-- ElevenLabs playback uses a disposable Web Audio transmission graph in spooky-audio, awaits a running audio context, and exposes failures without browser speech synthesis; why: keeps the requested voice processed and prevents silent narrator substitutions.
+- ElevenLabs playback primes and resumes Web Audio on the click, caches decoded AudioBuffers, and uses disposable BufferSource transmission graphs with tap-to-play recovery; why: delayed generation cannot depend on HTML media autoplay activation, and George never falls back to browser narration.
 - Shared ghost voice configuration supplies UI choices, server validation, synthesis settings, and playback tuning; why: keeps voice defaults consistent and numerical tuning testable without provider requests.
 - Provider audio response decoding is centralized in ghost-response; why: failed HTTP payloads retain their error body and can never become playable audio.
 - ESA macro statistics live in a dated source dataset separate from radar telemetry; why: historical population estimates must not be mistaken for current tracked targets.
