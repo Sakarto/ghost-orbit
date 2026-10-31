@@ -211,7 +211,6 @@ export default function GhostGlobe({
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           const started = performance.now();
           const ease = (f: number) => f * f * (3 - 2 * f);
-          let minRadius = Infinity;
           const animate = () => {
             if (cancelled) return;
             const elapsed = performance.now() - started;
@@ -239,8 +238,6 @@ export default function GhostGlobe({
               controls.target.lerpVectors(center, middle, f);
             }
             camera.lookAt(controls.target);
-            minRadius = Math.min(minRadius, camera.position.length());
-            el.current?.setAttribute("data-encounter-anim", `${seg}:${camera.position.length().toFixed(1)}/min${minRadius.toFixed(1)}`);
             if (elapsed < total) frame = requestAnimationFrame(animate);
           };
           animate();
