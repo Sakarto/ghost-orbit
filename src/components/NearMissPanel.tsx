@@ -82,9 +82,9 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
         {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       </div>
       {result && !error && <>
-        <p className="mt-1 text-[10px] text-muted-foreground">Closest sampled pairs · {result.scannedCount.toLocaleString()} ghosts scanned</p>
+        <p className="mt-1 text-[10px] text-muted-foreground">Soonest sampled pairs · {result.scannedCount.toLocaleString()} ghosts scanned</p>
         <ol className="mt-2 divide-y divide-border">
-          {result.encounters.map(encounter => (
+          {encounters.map(encounter => (
             <li key={encounter.key}>
               <Button variant="ghost" aria-pressed={selected?.key === encounter.key} onClick={() => onSelect(encounter)}
                 className={`h-auto w-full justify-start whitespace-normal rounded-sm px-1 py-2 text-left hover:bg-destructive/10 hover:text-destructive ${selected?.key === encounter.key ? "bg-destructive/10 text-destructive" : "text-foreground"}`}>
