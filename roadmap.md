@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Restore George-only processed playback, expose failures, validate ElevenLabs settings, and verify retry
+- [x] Restore George-only processed playback; verified valid settings, visible failure/retry, nonzero filtered output, no browser narration, and close cleanup
 - [x] Resume spin exits encounter preview and refreshes current orbital positions; verified
 - [x] Lighten continents very slightly while retaining the dark Earth
 - [x] Separate left radar and right near-misses below heading; center globe
