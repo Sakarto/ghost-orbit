@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { encounterTime, MAX_NEAR_MISSES, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
+import { encounterTime, MAX_NEAR_MISSES, SCAN_STEP_SECONDS, type NearMiss, type ScanGhost, type ScanReply, type ScanResult } from "@/lib/near-misses";
 
 export function NearMissPanel({ ghosts, selected, onSelect }: {
   ghosts: ScanGhost[]; selected: NearMiss | null; onSelect: (encounter: NearMiss | null) => void;
@@ -53,8 +53,9 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
     return () => { worker?.terminate(); if (timer) clearInterval(timer); };
   }, [ghosts, revision]);
 
-  // Encounters whose moment has passed drop off; the list below shifts up.
-  const encounters = result?.encounters.filter(e => !now || e.at >= now) ?? [];
+  // Encounters whose moment has passed (beyond one scan step of grace) drop off; the list shifts up.
+  const graceMs = SCAN_STEP_SECONDS * 1000;
+  const encounters = result?.encounters.filter(e => !now || e.at >= now - graceMs) ?? [];
 
   // Refill from the bottom once expired encounters leave gaps.
   useEffect(() => {
@@ -66,8 +67,8 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
 
   // A previewed encounter that has already happened is cleared too.
   useEffect(() => {
-    if (selected && now && selected.at < now) onSelect(null);
-  }, [selected, now, onSelect]);
+    if (selected && now && selected.at < now - graceMs) onSelect(null);
+  }, [selected, now, onSelect, graceMs]);
 
   return (
     <section aria-label="Near-miss detector">
