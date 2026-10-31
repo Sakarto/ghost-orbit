@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Make decoded George voice prominent over wind/static, verify nonzero voice output, and show decoding failures without background-only playback
-- [ ] Unlock sound on tap, play cached decoded George audio through Web Audio, and verify delayed playback plus tap-to-play recovery
+- [x] Make decoded George voice prominent over quieter wind/static; verified nonzero voice-only output and tested decoding errors
+- [x] Unlock sound on tap and cache decoded George audio; verified delayed playback and one-tap blocked-audio recovery with a single provider request
 - [x] Restore George-only processed playback; verified valid settings, visible failure/retry, nonzero filtered output, no browser narration, and close cleanup
 - [x] Resume spin exits encounter preview and refreshes current orbital positions; verified
 - [x] Lighten continents very slightly while retaining the dark Earth
