@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Make decoded George voice prominent over wind/static, verify nonzero voice output, and show decoding failures without background-only playback
 - [ ] Unlock sound on tap, play cached decoded George audio through Web Audio, and verify delayed playback plus tap-to-play recovery
 - [x] Restore George-only processed playback; verified valid settings, visible failure/retry, nonzero filtered output, no browser narration, and close cleanup
 - [x] Resume spin exits encounter preview and refreshes current orbital positions; verified
