@@ -1,33 +1,37 @@
-# Ghost Orbit
+# 👻 Ghost Orbit
+**Earth's orbit is haunted — and we're running out of space.**
 
-Build “Ghost Orbit,” a Halloween-themed web app showing real space debris around Earth as ghosts.
+Ghost Orbit is an interactive 3D globe that shows real space debris as ghosts, at their real positions, moving in real time. Click a ghost and it tells you how it died.
 
-Core:
-- A full-screen 3D globe using globe.gl with a dark space background and stars.
-- Fetch real TLE orbital data from CelesTrak (e.g. https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=tle, plus iridium-33-debris and 1999-025 for Fengyun-1C). Provide a bundled fallback dataset of sample TLE objects in case of CORS or network blocks. Use satellite.js to compute current positions and update every few seconds so they move.
-- Render each object as a small glowing ghost-green point at its real altitude.
-- Click a ghost: open a side panel with its name, NORAD ID, origin, and altitude, and a “Hear its story” button.
-- Stats panel: total debris shown, count by source event, and an altitude histogram highlighting the most crowded band as “The Haunted Zone.”
-- Style: spooky but clean. Deep navy/black background, ghost-green and purple accents, a pixel or gothic header font. Tagline: “Earth’s orbit is haunted — and we’re running out of space.”
-- Wire the story/voice button to generate a spooky first-person ghost story for the selected debris piece.
+Built solo at **LancerHacks 2026** (Pasadena City College), theme: *Space*.
 
-This project was built with [Lovable](https://lovable.dev).
+🔗 **Live demo:** [PASTE LIVE URL]
+🎥 **Video:** [PASTE VIDEO URL]
 
-## Build with Lovable
+## Features
+- **1,300+ real orbital objects** from the 2009 Cosmos–Iridium collision, the 2007 Fengyun-1C anti-satellite test, and intact "zombie" satellites like Vanguard 1 and Telstar 1
+- **Real-time orbital physics** using SGP4 propagation on CelesTrak TLE data
+- **Ghost Radar:** filter intact dead satellites vs. collision shrapnel
+- **The Haunted Zone:** an altitude histogram showing the most crowded orbital band, with sourced ESA debris figures
+- **Near-Miss Detector:** predicts the 5 closest debris-on-debris approaches in the next hour (miss distance, time, relative speed) in a Web Worker
+- **Haunted transmissions:** Claude writes a fact-locked first-person ghost story, and ElevenLabs voices it through a custom Web Audio "haunted radio" filter
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/4c35548b-f406-4fa9-80ae-781b8d208851).
+## How it works
+CelesTrak TLEs → SGP4 (satellite.js) → 3D globe + near-miss scan (Web Worker)
+Verified facts → Claude (Anthropic API) → ElevenLabs TTS → Web Audio filter chain
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+The near-miss scan propagates every object in 60-second steps over the next hour and records each pair's minimum separation. Pairs are pruned by sorting on altitude and only comparing objects within 10 km in height.
 
-## Development
+## Tech stack
+TypeScript · React · TanStack Start · Vite · Tailwind · globe.gl / Three.js · satellite.js · Anthropic Claude API · ElevenLabs API · Web Audio API · Web Workers · Vitest · Lovable
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+## Run locally
+```bash
+bun install
+bun run dev
 ```
+Set `ANTHROPIC_API_KEY` and `ELEVENLABS_API_KEY` as environment variables to enable stories and voices.
+
+## Data sources
+- Orbital elements: [CelesTrak](https://celestrak.org)
+- Debris population figures: [ESA Space Debris](https://www.esa.int/Space_Safety/Space_Debris)
