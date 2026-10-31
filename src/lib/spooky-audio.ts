@@ -6,14 +6,15 @@ let ctx: AudioContext | null = null;
 function ac() {
   if (typeof window === "undefined") return null;
   ctx ??= new AudioContext();
-  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 
 /** Unlock on the button gesture, before waiting for story/voice requests. */
-export function unlockSpookyAudio() {
+export async function unlockSpookyAudio() {
   const c = ac();
-  if (c) void c.resume().catch(() => {});
+  if (!c) throw new Error("Audio processing is unavailable.");
+  if (c.state === "suspended") await c.resume();
+  if (c.state !== "running") throw new Error("George's audio is blocked. Tap Hear it again to enable sound.");
 }
 
 /** No clean audio bypass: every voice passes through the haunted radio graph. */

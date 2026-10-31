@@ -11,4 +11,15 @@ describe("haunted voice tuning", () => {
   it("allows only George", () => {
     expect(VOICE_IDS).toEqual(["JBFqnCBsd6RMkjVDRZzb"]);
   });
+  it("uses supported ElevenLabs settings and a valid speech speed", () => {
+    expect(GHOST_VOICE_SETTINGS).toEqual({
+      stability: 0.22,
+      similarity_boost: 0.75,
+      style: 0.8,
+      use_speaker_boost: true,
+      speed: 0.85,
+    });
+    expect(GHOST_VOICE_SETTINGS.speed).toBeGreaterThanOrEqual(0.7);
+    expect(GHOST_VOICE_SETTINGS.speed).toBeLessThanOrEqual(1.2);
+  });
 });
