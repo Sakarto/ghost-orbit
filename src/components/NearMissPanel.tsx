@@ -97,7 +97,7 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
             </li>
           ))}
         </ol>
-        {!result.encounters.length && <p className="mt-2 text-xs text-muted-foreground">No eligible pairs in this scan.</p>}
+        {!encounters.length && <p className="mt-2 text-xs text-muted-foreground">No upcoming pairs in this scan.</p>}
       </>}
       {selected && <div className="mt-2 flex items-start justify-between gap-1 text-[10px] text-destructive">
         <span>Encounter preview · {new Date(selected.at).toISOString().slice(11, 19)} UTC</span>
