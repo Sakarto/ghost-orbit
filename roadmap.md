@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Lighten continents very slightly while retaining the dark Earth
 - [ ] Separate left radar and right near-misses below heading; center globe
 - [ ] Tight encounter framing and thick glowing connector; verify desktop and small screens
 - [x] Make intact satellite list readable and scrollable without clipping; constrain details scrolling
