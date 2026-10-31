@@ -53,6 +53,22 @@ export function NearMissPanel({ ghosts, selected, onSelect }: {
     return () => { worker?.terminate(); if (timer) clearInterval(timer); };
   }, [ghosts, revision]);
 
+  // Encounters whose moment has passed drop off; the list below shifts up.
+  const encounters = result?.encounters.filter(e => !now || e.at >= now) ?? [];
+
+  // Refill from the bottom once expired encounters leave gaps.
+  useEffect(() => {
+    if (!now || !result || scanning || !ghosts.length) return;
+    if (encounters.length >= MAX_NEAR_MISSES) return;
+    if (Date.now() - lastScanRef.current < 55000) return;
+    setRevision(r => r + 1);
+  }, [encounters.length, result, scanning, ghosts.length, now]);
+
+  // A previewed encounter that has already happened is cleared too.
+  useEffect(() => {
+    if (selected && now && selected.at < now) onSelect(null);
+  }, [selected, now, onSelect]);
+
   return (
     <section aria-label="Near-miss detector">
       <div className="flex items-center justify-between gap-1">
