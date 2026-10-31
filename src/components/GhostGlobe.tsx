@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { Vector3 } from "three";
 import type { Ghost } from "@/lib/debris";
 import type { NearMiss } from "@/lib/near-misses";
 
@@ -182,18 +183,62 @@ export default function GhostGlobe({
           // A close encounter must look at the pair, not through it at the surface.
           controls.enabled = false;
           controls.minDistance = 0.1;
-          const initialPosition = camera.position.clone();
-          const initialTarget = controls.target.clone();
-          const started = performance.now();
+          // Cinematic approach that never cuts through the globe: pull straight
+          // back from the current view, orbit around Earth at a wide radius to
+          // the encounter region, then dive radially in to the tight framing.
+          const start = camera.position.clone();
+          const startLength = start.length();
+          const startDir = start.clone().normalize();
+          const startTarget = controls.target.clone();
+          const pairDir = middle.clone().normalize();
+          const wide = Math.max(startLength * 1.5, 320);
+          const widePair = pairDir.clone().multiplyScalar(wide);
+          const center = new THREE.Vector3(0, 0, 0);
+          // Spherical interpolation between two directions, so the camera
+          // sweeps along the sphere's surface instead of a chord through it.
+          const slerpDir = (a: Vector3, b: Vector3, t: number, out: Vector3) => {
+            const dot = Math.min(1, Math.max(-1, a.dot(b)));
+            const angle = Math.acos(dot);
+            if (angle < 1e-4) return out.copy(a);
+            const sin = Math.sin(angle);
+            return out.copy(a).multiplyScalar(Math.sin((1 - t) * angle) / sin)
+              .addScaledVector(b, Math.sin(t * angle) / sin);
+          };
+          // Pull back 700 ms, orbit 900 ms, dive in 900 ms.
+          const OUT_MS = 700;
+          const ORBIT_MS = 900;
+          const DIVE_MS = 900;
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const started = performance.now();
+          const ease = (f: number) => f * f * (3 - 2 * f);
           const animate = () => {
             if (cancelled) return;
-            const progress = reducedMotion ? 1 : Math.min(1, (performance.now() - started) / 1200);
-            const eased = progress * progress * (3 - 2 * progress);
-            camera.position.lerpVectors(initialPosition, destination, eased);
-            controls.target.lerpVectors(initialTarget, middle, eased);
+            const elapsed = performance.now() - started;
+            if (reducedMotion) {
+              camera.position.copy(destination);
+              controls.target.copy(middle);
+              camera.lookAt(controls.target);
+              return;
+            }
+            const total = OUT_MS + ORBIT_MS + DIVE_MS;
+            let remaining = Math.min(elapsed, total);
+            const seg = remaining <= OUT_MS ? 0 : remaining <= OUT_MS + ORBIT_MS ? 1 : 2;
+            if (seg > 0) remaining -= OUT_MS;
+            if (seg > 1) remaining -= ORBIT_MS;
+            const phase = seg === 0 ? OUT_MS : seg === 1 ? ORBIT_MS : DIVE_MS;
+            const f = ease(Math.min(1, remaining / phase));
+            if (seg === 0) {
+              camera.position.copy(startDir).multiplyScalar(startLength + (wide - startLength) * f);
+              controls.target.lerpVectors(startTarget, center, f);
+            } else if (seg === 1) {
+              slerpDir(startDir, pairDir, f, camera.position).multiplyScalar(wide);
+              controls.target.copy(center);
+            } else {
+              camera.position.lerpVectors(widePair, destination, f);
+              controls.target.lerpVectors(center, middle, f);
+            }
             camera.lookAt(controls.target);
-            if (progress < 1) frame = requestAnimationFrame(animate);
+            if (elapsed < total) frame = requestAnimationFrame(animate);
           };
           animate();
           el.current?.setAttribute("data-encounter-camera-distance", String(distance));
